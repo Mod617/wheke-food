@@ -50,7 +50,7 @@ limiter = Limiter(
     get_remote_address,
     app=app,
     default_limits=["200 per hour"],
-    storage_uri="memory://" # Force le mode mémoire pour éviter les warnings
+    storage_uri="memory://" 
 )
 
 # =========================
@@ -79,13 +79,20 @@ def block_bad_bots():
         abort(403)
 
 # =========================
-# 🔥 SOCKET.IO
+# 🔥 SOCKET.IO (CORRIGÉ POUR 502)
 # =========================
 
-# Sur Railway, on force gevent si on est en ligne
 if os.environ.get("RAILWAY_STATIC_URL") or os.environ.get("PORT"):
     print("🚀 MODE PRODUCTION (Railway) → gevent")
-    socketio.init_app(app, cors_allowed_origins="*", async_mode="gevent")
+    socketio.init_app(
+        app, 
+        cors_allowed_origins="*", 
+        async_mode="gevent",
+        async_handlers=True,
+        engineio_logger=False,
+        ping_timeout=60,
+        ping_interval=25
+    )
 else:
     print("🧪 MODE LOCAL → threading")
     socketio.init_app(app, cors_allowed_origins="*", async_mode="threading")
@@ -162,10 +169,11 @@ with app.app_context():
         db.session.commit()
 
 # =========================
-# ENTRYPOINT & RUN
+# ENTRYPOINT
 # =========================
 
-# Railway utilisera 'app' via le Procfile: gunicorn ... app:app
+application = app
+
 if __name__ == "__main__":
     socketio.run(
         app,

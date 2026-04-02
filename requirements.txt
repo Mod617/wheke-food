@@ -3,8 +3,9 @@ flask-sqlalchemy
 flask-login
 flask-socketio
 gevent>=24.10.1
+greenlet>=3.1.1
 flask-mail
 flask-limiter
 psycopg2-binary
-gunicorn
+gunicorn>=21.0.0
 qrcode[pil]
