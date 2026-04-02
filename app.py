@@ -68,29 +68,35 @@ app.config['MAIL_PASSWORD'] = os.environ.get("MAIL_PASSWORD")
 mail = Mail(app)
 
 # =========================
-# ANTI BOT
+# ✅ ANTI BOT CORRIGÉ (IMPORTANT)
 # =========================
 
 @app.before_request
 def block_bad_bots():
     user_agent = request.headers.get('User-Agent', '').lower()
 
-    blocked = ['httrack', 'wget', 'curl', 'python-requests']
+    # ✅ IMPORTANT : ne pas bloquer si vide (Railway)
+    if not user_agent:
+        return
+
+    # ✅ autoriser Railway / health checks
+    if "railway" in user_agent:
+        return
+
+    # ❌ bots vraiment dangereux seulement
+    blocked = ['httrack', 'wget']
 
     if any(bot in user_agent for bot in blocked):
         abort(403)
 
-    if not user_agent:
-        abort(403)
-
 # =========================
-# SOCKET.IO (FIX ICI)
+# SOCKET.IO
 # =========================
 
 socketio.init_app(
     app,
     cors_allowed_origins="*",
-    async_mode="gevent"  # ✅ corrigé (plus de eventlet)
+    async_mode="gevent"
 )
 
 # =========================
@@ -198,7 +204,7 @@ def upload_file():
     return jsonify({"error": "Format non autorisé"}), 400
 
 # =========================
-# IMPORT ROUTES
+# IMPORT ROUTES PRINCIPALES
 # =========================
 
 with app.app_context():
@@ -219,7 +225,7 @@ with app.app_context():
     if not admin:
         db.session.add(models.Admin(
             username="Mpenza",
-            password=hash_password(os.environ.get("ADMIN_PASSWORD", "change_me")),  # ✅ sécurisé
+            password=hash_password(os.environ.get("ADMIN_PASSWORD", "change_me")),
             role="super_admin"
         ))
         db.session.commit()
