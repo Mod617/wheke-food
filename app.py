@@ -21,7 +21,7 @@ BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "super_secret_key")
 
-# 🔥 DATABASE (Railway ready)
+# DATABASE (Railway)
 db_url = os.environ.get("DATABASE_URL")
 
 if db_url and db_url.startswith("postgres://"):
@@ -37,7 +37,7 @@ app.config["UPLOAD_FOLDER"] = os.path.join("static", "uploads")
 app.config["ALLOWED_EXTENSIONS"] = {"png", "jpg", "jpeg", "jfif", "webp"}
 
 # =========================
-# PERFORMANCE HEADERS
+# HEADERS
 # =========================
 
 @app.after_request
@@ -84,13 +84,13 @@ def block_bad_bots():
         abort(403)
 
 # =========================
-# SOCKET.IO (SAFE MODE)
+# SOCKET.IO
 # =========================
 
 socketio.init_app(
     app,
     cors_allowed_origins="*",
-    async_mode="threading"  # ✅ plus stable Railway
+    async_mode="eventlet"  # 🔥 compatible avec gunicorn eventlet
 )
 
 # =========================
@@ -170,7 +170,8 @@ def contact():
 
         return jsonify({"success": True})
 
-    except Exception:
+    except Exception as e:
+        print("MAIL ERROR:", e)
         return jsonify({"success": False})
 
 @app.route("/upload", methods=["POST"])
@@ -224,7 +225,14 @@ with app.app_context():
         db.session.commit()
 
 # =========================
-# RUN (IMPORTANT RAILWAY)
+# ENTRYPOINT POUR GUNICORN
+# =========================
+
+# 🔥 IMPORTANT pour Railway
+application = app
+
+# =========================
+# RUN LOCAL
 # =========================
 
 if __name__ == "__main__":
