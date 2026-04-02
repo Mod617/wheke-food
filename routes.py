@@ -149,74 +149,7 @@ def statut_met_admin(met):
 # =========================
 @app.route("/")
 def accueil():
-    now = datetime.now()
-    jour_actuel_index = now.weekday()
-
-    mets = models.Met.query.all()
-
-    repas = []
-    desserts = []
-    jus = []
-
-    for m in mets:
-
-        # 🔥 SUPPRESSION VISUELLE
-        if est_expire(m):
-            continue
-
-        # ✅ NETTOYAGE SAFE DES JOURS (ANTI-BUG)
-        jours_met = [j.strip() for j in (m.jours or "").split(",") if j.strip() in JOURS]
-
-        # 🔥 Si aucun jour valide → skip
-        if not jours_met:
-            continue
-
-        # 🔥 trouver prochain jour valide
-        prochain_jour_index = None
-
-        for j in jours_met:
-            index = JOURS.index(j)
-            diff = (index - jour_actuel_index) % 7
-
-            if prochain_jour_index is None or diff < prochain_jour_index:
-                prochain_jour_index = diff
-
-        if prochain_jour_index is None:
-            continue
-
-        # 🔥 calcul dispo + badge (⚠️ suppose que tu corriges aussi la fonction)
-        m.disponibilite = calcul_disponibilite(m)
-
-        # 🔥 PRIORITÉ
-        if m.badge == "now":
-            m.priorite = 0
-        elif m.badge == "today":
-            m.priorite = 1
-        elif m.badge == "tomorrow":
-            m.priorite = 2
-        else:
-            m.priorite = 3 + prochain_jour_index
-
-        # 🔥 classement
-        if m.categorie_id == 1:
-            repas.append(m)
-        elif m.categorie_id == 2:
-            desserts.append(m)
-        elif m.categorie_id == 3:
-            jus.append(m)
-
-    # 🔥 TRI FINAL
-    repas.sort(key=lambda x: x.priorite)
-    desserts.sort(key=lambda x: x.priorite)
-    jus.sort(key=lambda x: x.priorite)
-
-    return render_template(
-        "base.html",
-        repas=repas,
-        desserts=desserts,
-        jus=jus
-    )
-
+    return "OK APP WORKING"
 
 
         
