@@ -84,13 +84,13 @@ def block_bad_bots():
         abort(403)
 
 # =========================
-# SOCKET.IO
+# SOCKET.IO (FIX ICI)
 # =========================
 
 socketio.init_app(
     app,
     cors_allowed_origins="*",
-    async_mode="eventlet"  # 🔥 compatible avec gunicorn eventlet
+    async_mode="gevent"  # ✅ corrigé (plus de eventlet)
 )
 
 # =========================
@@ -219,7 +219,7 @@ with app.app_context():
     if not admin:
         db.session.add(models.Admin(
             username="Mpenza",
-            password=hash_password("Mode98885@"),
+            password=hash_password(os.environ.get("ADMIN_PASSWORD", "change_me")),  # ✅ sécurisé
             role="super_admin"
         ))
         db.session.commit()
@@ -228,7 +228,6 @@ with app.app_context():
 # ENTRYPOINT POUR GUNICORN
 # =========================
 
-# 🔥 IMPORTANT pour Railway
 application = app
 
 # =========================
