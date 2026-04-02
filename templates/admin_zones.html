@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Gestion des zones</title>
+
+<style>
+body{
+    font-family: Segoe UI;
+    background:#f4f6f9;
+    margin:0;
+}
+
+header{
+    background:#111;
+    color:white;
+    padding:20px;
+    display:flex;
+    justify-content:space-between;
+}
+
+header a{
+    color:white;
+    text-decoration:none;
+}
+
+.container{
+    width:90%;
+    margin:auto;
+    margin-top:30px;
+}
+
+.section{
+    background:white;
+    padding:20px;
+    border-radius:10px;
+    margin-bottom:30px;
+    box-shadow:0 4px 10px rgba(0,0,0,0.1);
+}
+
+input{
+    padding:8px;
+    margin:5px;
+}
+
+button{
+    padding:8px 12px;
+    background:#ff6600;
+    border:none;
+    color:white;
+    border-radius:6px;
+    cursor:pointer;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+}
+
+th, td{
+    padding:10px;
+    border-bottom:1px solid #ddd;
+    text-align:center;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+    <h2>📍 Gestion des zones</h2>
+    <a href="/admin/dashboard">⬅ Retour</a>
+</header>
+
+<div class="container">
+
+    <!-- ➕ AJOUT ZONE -->
+    <div class="section">
+        <h3>Ajouter une zone</h3>
+
+        <form method="POST" action="/admin/add_zone">
+            <input type="text" name="nom" placeholder="Nom du quartier" required>
+
+            <input type="number" name="prix_standard" placeholder="Prix standard" required>
+
+            <input type="number" name="prix_express" placeholder="Prix express" required>
+
+            <button type="submit">Ajouter</button>
+        </form>
+    </div>
+
+    <!-- 📋 LISTE -->
+    <div class="section">
+        <h3>Zones existantes</h3>
+
+        <table>
+            <tr>
+                <th>Zone</th>
+                <th>Standard</th>
+                <th>Express</th>
+                <th>Action</th>
+            </tr>
+
+            {% for z in zones %}
+            <tr>
+                <td>{{ z.nom }}</td>
+                <td>{{ z.prix_standard }} FCFA</td>
+                <td>{{ z.prix_express }} FCFA</td>
+                <td>
+                    <form method="POST" action="/admin/delete_zone/{{ z.id }}">
+                        <button onclick="return confirm('Supprimer cette zone ?')">
+                            Supprimer
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+
+        </table>
+
+    </div>
+
+</div>
+
+</body>
+</html>

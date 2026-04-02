@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Livreur</title>
+    
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+            margin: 0;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: auto;
+        }
+
+        h2 { color: #333; text-align: center; }
+
+        .card {
+            background: white;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            border-left: 5px solid #25D366;
+        }
+
+        .card.active { border-left-color: #ff9800; background: #fffdf5; }
+
+        button {
+            padding: 12px;
+            margin-top: 10px;
+            border: none;
+            background: #25D366;
+            color: white;
+            cursor: pointer;
+            border-radius: 5px;
+            font-weight: bold;
+            width: 100%;
+            display: block;
+        }
+
+        .btn-group { display: flex; gap: 5px; }
+        .btn-group button { width: 50%; }
+
+        .btn-stop { background: #ff4444; margin-top: 20px; }
+
+        small {
+            color: #666;
+            display: block;
+            margin-top: 5px;
+            font-size: 0.85rem;
+        }
+
+        a {
+            color: #007bff;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        #status-gps {
+            text-align: center;
+            font-size: 0.9rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        #chat-box {
+            height: 200px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-bottom: 10px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .msg {
+            padding: 8px 12px;
+            margin-bottom: 8px;
+            border-radius: 10px;
+            max-width: 85%;
+            font-size: 0.95rem;
+            line-height: 1.4;
+            position: relative;
+        }
+
+        .msg-livreur {
+            align-self: flex-end;
+            background: #dcf8c6;
+            border-bottom-right-radius: 2px;
+        }
+
+        .msg-client {
+            align-self: flex-start;
+            background: #ffffff;
+            border-bottom-left-radius: 2px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+    <h2>🚴 Mes commandes</h2>
+    <div id="status-gps" style="color: red;">🔴 GPS Inactif</div>
+    
+    <div id="commandes">Chargement des commandes...</div>
+    
+    <div style="margin-top:20px; background:white; padding:15px; border-radius:10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+        <h3 style="margin-top:0;">💬 Chat client (Commande active)</h3>
+        <div id="chat-box">
+            <small style="color:gray; text-align:center; width: 100%;">Activez "En route" pour chatter</small>
+        </div>
+        <div style="display:flex; gap:5px;">
+            <input id="message" placeholder="Écrire au client..." style="flex:1; padding:12px; border-radius:5px; border:1px solid #ddd;">
+            <button onclick="envoyerMessage()" style="width:auto; margin-top:0; padding:10px 20px;">Envoyer</button>
+        </div>
+    </div>
+
+    <button onclick="stopGPS()" class="btn-stop">⛔ Arrêter le Tracking GPS</button>
+</div>
+
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+
+<script>
+    const socket = io();
+
+    let CURRENT_TRACKING = null;
+    let watchId = null;
+    let fallbackInterval = null;
+    let CURRENT_LIVRAISON_ID = null;
+
+    function loadCommandes() {
+        fetch("/api/livreur/commandes")
+            .then(res => res.json())
+            .then(data => {
+                let html = "";
+                if (data.length === 0) {
+                    html = "<p style='text-align:center'>Aucune commande en cours.</p>";
+                } else {
+                    data.forEach(cmd => {
+                        const isActive = (CURRENT_LIVRAISON_ID == cmd.livraison_id);
+                        
+                        html += `
+                        <div class="card ${isActive ? 'active' : ''}">
+                            <b>📦 Commande:</b> #${cmd.tracking}<br>
+                            <b>Statut:</b> ${cmd.statut}<br>
+                            <b>📍 Destination:</b> ${
+                                cmd.gps 
+                                ? `<a href="https://www.google.com/maps?q=${cmd.gps}" target="_blank">Voir sur la carte</a>`
+                                : (cmd.adresse || "Non défini")
+                            }<br>
+
+                            <div class="btn-group">
+                                <button onclick="prendre(${cmd.livraison_id})" style="background:#007bff;">📦 Prendre</button>
+                                <button onclick="startGPS(${cmd.livraison_id}, '${cmd.tracking}')" style="background:#ff9800;">🚀 En route</button>
+                            </div>
+
+                            ${cmd.peut_livrer ? `
+                                <button onclick="livrer(${cmd.livraison_id})" style="background:#28a745; margin-top:10px;">
+                                    ✅ Marquer comme Livré
+                                </button>
+                            ` : ""}
+                        </div>
+                        `;
+                    });
+                }
+                document.getElementById("commandes").innerHTML = html;
+            })
+            .catch(err => console.error("Erreur chargement:", err));
+    }
+
+    function rejoindreRoom(tracking) {
+        CURRENT_TRACKING = tracking;
+        socket.emit("join_room", { tracking: tracking });
+        console.log("🚪 Rejoint room:", tracking);
+        
+        fetch(`/api/messages/${tracking}`)
+        .then(res => res.json())
+        .then(data => {
+            let box = document.getElementById("chat-box");
+            box.innerHTML = "";
+
+            data.forEach(msg => {
+                const isLivreur = msg.sender === "livreur";
+
+                box.innerHTML += `
+                    <div class="msg ${isLivreur ? 'msg-livreur' : 'msg-client'}">
+                        <b style="font-size: 0.7em; display: block; color: #555;">
+                            ${isLivreur ? 'Moi' : msg.sender} :
+                        </b>
+                        ${msg.message}
+                    </div>
+                `;
+            });
+
+            box.scrollTop = box.scrollHeight;
+        });
+    }
+
+    function envoyerMessage() {
+        const input = document.getElementById("message");
+        const message = input.value.trim();
+
+        if (!message || !CURRENT_TRACKING) {
+            if(!CURRENT_TRACKING) alert("Cliquez sur 'En route' pour activer le chat.");
+            return;
+        }
+
+        socket.emit("send_message", {
+            tracking: CURRENT_TRACKING,
+            message: message,
+            sender: "livreur"
+        });
+
+        input.value = "";
+    }
+
+    socket.on("receive_message", (data) => {
+        let box = document.getElementById("chat-box");
+        if (box && data.tracking === CURRENT_TRACKING) {
+            const isLivreur = data.sender === "livreur";
+            box.innerHTML += `
+                <div class="msg ${isLivreur ? 'msg-livreur' : 'msg-client'}">
+                    <b style="font-size: 0.7em; display: block; color: #555;">${isLivreur ? 'Moi' : data.sender} :</b>
+                    ${data.message}
+                </div>
+            `;
+            box.scrollTop = box.scrollHeight;
+        }
+    });
+
+    function startGPS(livraison_id, tracking) {
+        if (!navigator.geolocation) return alert("GPS non supporté");
+
+        stopGPS(); 
+        rejoindreRoom(tracking);
+
+        CURRENT_LIVRAISON_ID = livraison_id;
+
+        localStorage.setItem("livraison_active", JSON.stringify({
+            livraison_id: livraison_id,
+            tracking: tracking
+        }));
+
+        document.getElementById("status-gps").innerHTML = "🟡 Activation GPS...";
+        document.getElementById("status-gps").style.color = "orange";
+
+        navigator.geolocation.getCurrentPosition((pos) => {
+            document.getElementById("status-gps").innerHTML = "🟢 GPS Actif (Commande #" + tracking + ")";
+            document.getElementById("status-gps").style.color = "green";
+
+            watchId = navigator.geolocation.watchPosition(sendPosition, null, { enableHighAccuracy: true });
+
+            fallbackInterval = setInterval(() => {
+                navigator.geolocation.getCurrentPosition(sendPosition);
+            }, 10000);
+
+            loadCommandes();
+        }, () => {
+            alert("Autorisez le GPS !");
+        });
+    }
+
+    function sendPosition(pos) {
+        if (!CURRENT_LIVRAISON_ID) return;
+        fetch("/api/livreur/position", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                livraison_id: CURRENT_LIVRAISON_ID,
+                lat: pos.coords.latitude,
+                lng: pos.coords.longitude
+            })
+        });
+    }
+
+    function stopGPS() {
+        if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+        if (fallbackInterval !== null) clearInterval(fallbackInterval);
+        
+        localStorage.removeItem("livraison_active");
+
+        watchId = null;
+        fallbackInterval = null;
+        CURRENT_LIVRAISON_ID = null;
+        CURRENT_TRACKING = null;
+        
+        document.getElementById("status-gps").innerHTML = "🔴 GPS Inactif";
+        document.getElementById("status-gps").style.color = "red";
+        document.getElementById("chat-box").innerHTML = `<small style="color:gray; text-align:center; width:100%;">Activez "En route" pour chatter</small>`;
+        
+        loadCommandes();
+    }
+
+    // --- NOUVELLES FONCTIONS ÉTAPE 2 ---
+
+    function livrer(id) { 
+        if(confirm("Confirmer la livraison de cette commande ?")) {
+            fetch("/api/livreur/livrer", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ livraison_id: id })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    alert("Livraison terminée ! ✅");
+                    
+                    // 🔥 afficher bouton supprimer chat
+                    afficherBoutonDelete(id);
+
+                    // 🛑 stop GPS
+                    if(CURRENT_LIVRAISON_ID == id) stopGPS();
+                }
+            });
+        }
+    }
+
+    function afficherBoutonDelete(livraison_id) {
+        const container = document.querySelector(".container");
+
+        // éviter doublon
+        if (document.getElementById("btn-delete-chat")) return;
+
+        const btn = document.createElement("button");
+        btn.id = "btn-delete-chat";
+        btn.innerHTML = "🧹 Supprimer le chat avec le client";
+        btn.style.background = "#e74c3c";
+        btn.style.marginTop = "15px";
+
+        btn.onclick = function () {
+            if (confirm("Supprimer définitivement le chat avec ce client ?")) {
+                fetch("/api/livreur/delete_messages", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ livraison_id: livraison_id })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        alert("Chat supprimé 🧹");
+                        document.getElementById("chat-box").innerHTML = `
+                            <small style="color:gray; text-align:center; width:100%;">
+                                Chat supprimé
+                            </small>
+                        `;
+                        // Optionnel : masquer le bouton après suppression
+                        btn.style.display = "none";
+                    }
+                });
+            }
+        };
+
+        container.appendChild(btn);
+    }
+
+    function prendre(id) { 
+        fetch("/api/livreur/prendre", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ livraison_id: id })
+        }).then(res => res.json()).then(data => {
+            if (data.success) { 
+                alert("Commande acceptée !"); 
+                loadCommandes(); 
+            }
+        });
+    }
+    
+    setInterval(loadCommandes, 30000);
+    loadCommandes();
+
+    window.addEventListener("load", () => {
+        const saved = localStorage.getItem("livraison_active");
+        if (saved) {
+            const data = JSON.parse(saved);
+            startGPS(data.livraison_id, data.tracking);
+        }
+    });
+</script>
+
+</body>
+</html>

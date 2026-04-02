@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Finaliser commande - WHÉKÉ FOOD</title>
+
+<link rel="stylesheet" href="/static/style.css">
+
+<style>
+body{
+margin:0;
+font-family:'Segoe UI',Arial;
+background:#f5f5f5;
+}
+
+header{
+display:flex;
+justify-content:space-between;
+align-items:center;
+padding:15px 20px;
+background:white;
+box-shadow:0 2px 10px rgba(0,0,0,0.08);
+}
+
+.logo{
+display:flex;
+align-items:center;
+gap:10px;
+}
+
+.logo img{
+height:45px;
+border-radius:10px;
+}
+
+.container{
+max-width:500px;
+margin:30px auto;
+background:white;
+padding:25px;
+border-radius:15px;
+box-shadow:0 10px 30px rgba(0,0,0,0.1);
+}
+
+h2{
+text-align:center;
+margin-bottom:20px;
+}
+
+input, select{
+width:100%;
+padding:12px;
+margin-bottom:15px;
+border-radius:10px;
+border:1px solid #ddd;
+font-size:15px;
+}
+
+.btn{
+width:100%;
+padding:12px;
+border:none;
+border-radius:10px;
+background:#ff6b00;
+color:white;
+font-size:16px;
+cursor:pointer;
+font-weight:bold;
+}
+
+.btn:hover{
+background:#e65c00;
+}
+
+.panier-box{
+background:#fafafa;
+padding:15px;
+border-radius:10px;
+margin-bottom:20px;
+}
+
+.item{
+display:flex;
+justify-content:space-between;
+margin-bottom:5px;
+}
+
+.total{
+font-weight:bold;
+text-align:right;
+margin-top:10px;
+}
+
+#boxPrix{
+margin-top:10px;
+background:#fff3e6;
+padding:10px;
+border-radius:10px;
+}
+
+/* DROPDOWN */
+.dropdown {
+position: relative;
+margin-bottom: 15px;
+}
+
+.dropdown-btn {
+padding: 12px;
+border: 1px solid #ddd;
+border-radius: 10px;
+background: white;
+cursor: pointer;
+display:flex;
+justify-content:space-between;
+align-items:center;
+}
+
+.dropdown-btn:after{
+content:"▼";
+font-size:12px;
+color:#888;
+}
+
+.dropdown-content {
+display: none;
+position: absolute;
+width: 100%;
+background: white;
+border-radius: 12px;
+box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+max-height: 0;
+overflow: hidden;
+transition: all 0.25s ease;
+z-index: 1000;
+}
+
+.dropdown-content.show {
+display: block;
+max-height: 300px;
+overflow-y: auto;
+}
+
+.dropdown-content input {
+margin: 10px;
+width: calc(100% - 20px);
+padding:10px;
+border-radius:8px;
+border:1px solid #eee;
+outline:none;
+}
+
+.quartier-item {
+padding: 12px;
+cursor: pointer;
+border-bottom:1px solid #f1f1f1;
+}
+
+.quartier-item:hover {
+background: #f8f8f8;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+<div class="logo">
+<img src="{{ url_for('static', filename='logo.jpg') }}">
+<h2>WHÉKÉ FOOD</h2>
+</div>
+
+<a href="/" style="text-decoration:none;">⬅ Retour</a>
+</header>
+
+<div class="container">
+
+<h2>Finaliser ma commande</h2>
+
+<div class="panier-box" id="panierBox"></div>
+
+<input type="text" id="telephone" placeholder="Numéro de téléphone">
+
+<select id="livraison">
+<option value="">Type de livraison</option>
+<option value="standard">🚚 Standard</option>
+<option value="express">⚡ Express</option>
+</select>
+
+<div class="dropdown">
+<div class="dropdown-btn" onclick="toggleDropdown()">
+<span id="selectedQuartier">-- Choisir un quartier --</span>
+</div>
+
+<div class="dropdown-content" id="dropdownContent">
+<input type="text" id="searchQuartier" placeholder="🔍 Rechercher quartier...">
+<div id="quartierList"></div>
+</div>
+</div>
+
+<input type="text" id="quartierLibre" placeholder="Votre quartier (si non listé)">
+
+<button class="btn" onclick="envoyerLocalisation()">📍 Utiliser ma position</button>
+
+<div id="boxPrix"></div>
+
+<button class="btn" onclick="envoyerCommande()">✅ Commander</button>
+
+</div>
+
+<script>
+let gps = null;
+let selectedQuartier = "";
+
+// ZONES
+const zonesData = {
+"A": { quartiers:["Sainte Cécile","Ladji","Sikècodji","16 Ampoules","Vossa","Gbejdromede","Gbegamey","Jéricho","Saint Jean","Zongo","Houéyiho","Cadjèhoun","Cocotiers","Haie Vive","Guinkomey","Étoile Rouge"], standard:500, express:800 },
+"B": { quartiers:["Adogleta","Segbeya","Djidjè","Dantokpa","Ganhi","Jonquet","Avakpa","Xwlacodji","Tokpa Hoho","Hindé","Vêdoko","Saint Michel","Enagnon","Akpakpa Centre"], standard:800, express:1000 },
+"C": { quartiers:["Godomey","Fidjrossè","Agla","Kouhounou","Ménontin","Ste Rita","Fifadji","Jak","Kindonou","Lobozounkpa","Tankpè","Sèkandji","Ablangandan"], standard:1000, express:1300 },
+"D": { quartiers:["Université (UAC)","Calavi Kpota","IITA","Bidossessi","Arconville","Zogbadjè","Akpakpa PK10","Togoudo","Houèto","Cocotomey"], standard:1200, express:1500 },
+"E": { quartiers:["Abomey-Calavi Marché","Ouédo","Togba","Pahou","Glo-Djigbé","Sèmè-Kpodji","Zinvié","Akassato","Atrokpocodji"], standard:1500, express:2000 }
+};
+
+// toggle
+function toggleDropdown(){
+let box = document.getElementById("dropdownContent");
+box.classList.toggle("show");
+}
+
+// fermer si clic dehors
+document.addEventListener("click", function(e){
+let dropdown = document.querySelector(".dropdown");
+if(!dropdown && !dropdown.contains(e.target)){
+document.getElementById("dropdownContent").classList.remove("show");
+}
+});
+
+// afficher quartiers
+function afficherQuartiers(filtre=""){
+let container = document.getElementById("quartierList");
+container.innerHTML = "";
+
+for(let z in zonesData){
+zonesData[z].quartiers.forEach(q=>{
+if(q.toLowerCase().includes(filtre.toLowerCase())){
+let div = document.createElement("div");
+div.className = "quartier-item";
+div.innerText = q;
+
+div.onclick = () => {
+selectedQuartier = q;
+document.getElementById("selectedQuartier").innerText = q;
+
+// 🔥 reset champ libre
+document.getElementById("quartierLibre").value = "";
+
+document.getElementById("dropdownContent").classList.remove("show");
+document.getElementById("searchQuartier").value = "";
+afficherQuartiers();
+
+calculer();
+};
+
+container.appendChild(div);
+}
+});
+}
+}
+
+// recherche
+document.getElementById("searchQuartier").addEventListener("keyup", function(){
+afficherQuartiers(this.value);
+});
+
+// 🔥 PRIORITÉ AU TEXTE
+document.getElementById("quartierLibre").addEventListener("input", function(){
+if(this.value.trim() !== ""){
+selectedQuartier = "";
+document.getElementById("selectedQuartier").innerText = "-- Choisir un quartier --";
+calculer();
+}
+});
+
+afficherQuartiers();
+
+// GPS
+function envoyerLocalisation(){
+if(navigator.geolocation){
+navigator.geolocation.getCurrentPosition(pos=>{
+gps = pos.coords.latitude + "," + pos.coords.longitude;
+alert("Localisation OK ✅");
+});
+}
+}
+
+// zone
+function getZone(q){
+for(let z in zonesData){
+if(zonesData[z].quartiers.includes(q)) return z;
+}
+return null;
+}
+
+// calcul
+function calculer(){
+let qSelect = selectedQuartier;
+let qLibre = document.getElementById("quartierLibre").value.trim();
+let l = document.getElementById("livraison").value;
+
+// 🔥 priorité texte
+let q = qLibre || qSelect;
+
+if(!q || !l) return;
+
+let zone = getZone(q);
+
+if(!zone){
+document.getElementById("boxPrix").innerHTML =
+"🚚 Prix de livraison sera confirmé après commande";
+return;
+}
+
+let prix = zonesData[zone][l];
+let totalPanier = parseInt(document.getElementById("totalPanier").innerText) || 0;
+let total = totalPanier + prix;
+
+document.getElementById("boxPrix").innerHTML =
+`🚚 Livraison : ${prix} FCFA <br> 💰 Total : ${total} FCFA`;
+}
+
+document.getElementById("livraison").addEventListener("change", calculer);
+
+// panier
+function afficherPanierCommande(){
+let box = document.getElementById("panierBox");
+let data = JSON.parse(localStorage.getItem("panier") || "[]");
+
+let html = "";
+let total = 0;
+
+data.forEach(i=>{
+html += `
+<div class="item" style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+<img src="${i.image || ''}" style="width:50px;height:50px;border-radius:8px;object-fit:cover;" onerror="this.style.display='none'">
+<div style="flex:1;">${i.nom} x${i.quantite}</div>
+<span>${i.prix * i.quantite}</span>
+</div>
+`;
+total += i.prix * i.quantite;
+});
+
+html += `<div class="total">Total : <span id="totalPanier">${total}</span> FCFA</div>`;
+box.innerHTML = html;
+}
+
+afficherPanierCommande();
+
+// ENVOI
+function envoyerCommande(){
+let tel = document.getElementById("telephone").value.trim();
+let qSelect = selectedQuartier;
+let qLibre = document.getElementById("quartierLibre").value.trim();
+
+// 🔥 priorité texte
+let quartier = qLibre || qSelect;
+
+let livraison = document.getElementById("livraison").value;
+
+if(!tel) return alert("Numéro requis");
+if(!livraison) return alert("Choisir livraison");
+if(!quartier && !gps) return alert("Adresse ou GPS requis");
+
+let panier = JSON.parse(localStorage.getItem("panier") || "[]");
+
+fetch("/commander",{
+method:"POST",
+headers:{ "Content-Type":"application/json" },
+body: JSON.stringify({
+    telephone: tel,
+    adresse: quartier,
+    gps: gps || "",
+    livraison: livraison,
+    zone: quartier, 
+    panier: panier.map(p=>({id:p.id,qte:p.quantite}))
+})
+})
+.then(r=>r.json())
+.then(r=>{
+if(r.success){
+
+    // 🔥 STOCKER LA COMMANDE DANS L'HISTORIQUE LOCAL
+    let commandes = JSON.parse(localStorage.getItem("commandes") || "[]");
+
+    commandes.push({
+        tracking: r.tracking,
+        date: new Date().toLocaleString()
+    });
+
+    localStorage.setItem("commandes", JSON.stringify(commandes));
+
+    alert("Commande envoyée ✅ Code : "+r.tracking);
+
+    // Vider le panier
+    localStorage.removeItem("panier");
+
+    // Rediriger vers le suivi
+    window.location.href = "/suivi/" + r.tracking;
+
+}else{
+    alert("Erreur lors de l'envoi ❌");
+}
+});
+}
+</script>
+
+</body>
+</html>

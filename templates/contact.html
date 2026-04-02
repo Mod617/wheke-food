@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contact - WHÉKÉ FOOD</title>
+
+<style>
+body{
+margin:0;
+font-family:'Segoe UI',Arial;
+background:#f5f5f5;
+}
+
+/* HEADER */
+header{
+display:flex;
+justify-content:space-between;
+align-items:center;
+padding:15px 20px;
+background:white;
+box-shadow:0 2px 10px rgba(0,0,0,0.08);
+}
+
+.logo{
+display:flex;
+align-items:center;
+gap:10px;
+}
+
+.logo img{
+height:45px;
+width:45px;
+border-radius:10px;
+animation: floatLogo 3s ease-in-out infinite;
+transition:0.3s;
+}
+
+.logo img:hover{
+transform: scale(1.1) rotate(5deg);
+}
+
+@keyframes floatLogo {
+0% { transform: translateY(0px); }
+50% { transform: translateY(-5px); }
+100% { transform: translateY(0px); }
+}
+
+/* CONTAINER */
+.container{
+max-width:500px;
+margin:40px auto;
+background:white;
+padding:25px;
+border-radius:15px;
+box-shadow:0 10px 30px rgba(0,0,0,0.1);
+animation: fadeIn 0.4s ease;
+}
+
+@keyframes fadeIn {
+from { opacity:0; transform:translateY(20px); }
+to { opacity:1; transform:translateY(0); }
+}
+
+h2{
+text-align:center;
+margin-bottom:10px;
+}
+
+.subtitle{
+text-align:center;
+color:#777;
+margin-bottom:20px;
+}
+
+/* INPUTS */
+input, textarea{
+width:100%;
+padding:12px;
+margin-bottom:15px;
+border-radius:10px;
+border:1px solid #ddd;
+font-size:15px;
+}
+
+textarea{
+min-height:120px;
+resize:none;
+}
+
+/* BUTTON */
+.btn{
+width:100%;
+padding:12px;
+border:none;
+border-radius:10px;
+background:#ff6b00;
+color:white;
+font-size:16px;
+cursor:pointer;
+font-weight:bold;
+transition:0.3s;
+}
+
+.btn:hover{
+background:#e65c00;
+transform:scale(1.02);
+}
+
+/* SUCCESS */
+.success{
+background:#27ae60;
+color:white;
+padding:10px;
+border-radius:8px;
+text-align:center;
+margin-bottom:15px;
+display:none;
+animation: fadeIn 0.4s ease;
+}
+
+footer{
+text-align:center;
+margin-top:20px;
+color:#999;
+font-size:13px;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+<div class="logo">
+    <img src="{{ url_for('static', filename='logo.jpg') }}">
+    <h3>WHÉKÉ FOOD</h3>
+</div>
+
+<a href="/" style="text-decoration:none;">⬅ Retour</a>
+</header>
+
+<div class="container">
+
+<h2>📩 Contactez-nous</h2>
+<p class="subtitle">Une question ? Un problème ? Écrivez-nous 👇</p>
+
+<div id="successMsg" class="success">
+✅ Message envoyé avec succès !
+</div>
+
+<input type="text" id="nom" placeholder="Votre nom">
+<input type="email" id="email" placeholder="Votre email">
+<textarea id="message" placeholder="Votre message..."></textarea>
+
+<button class="btn" onclick="envoyerMessage()">Envoyer</button>
+
+<footer>
+Nous répondons généralement en quelques minutes 🚀
+</footer>
+
+</div>
+
+<script>
+function envoyerMessage(){
+
+let nom = document.getElementById("nom").value.trim();
+let email = document.getElementById("email").value.trim();
+let message = document.getElementById("message").value.trim();
+
+if(!nom || !email || !message){
+return alert("Veuillez remplir tous les champs ❌");
+}
+
+fetch("/contact",{
+method:"POST",
+headers:{ "Content-Type":"application/json" },
+body: JSON.stringify({
+nom: nom,
+email: email,
+message: message
+})
+})
+.then(r=>r.json())
+.then(r=>{
+if(r.success){
+document.getElementById("successMsg").style.display = "block";
+
+document.getElementById("nom").value="";
+document.getElementById("email").value="";
+document.getElementById("message").value="";
+}else{
+alert("Erreur ❌");
+}
+});
+}
+</script>
+
+</body>
+</html>

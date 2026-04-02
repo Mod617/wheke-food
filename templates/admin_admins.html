@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Gestion des Admins</title>
+    <style>
+        body { font-family: Arial; padding: 30px; background:#f4f6f9; }
+        h2 { margin-bottom: 20px; }
+        form { margin-bottom: 20px; }
+        input { padding:10px; margin-right:10px; }
+        button { padding:10px 15px; cursor:pointer; }
+        .admin { background:white; padding:15px; margin-bottom:10px; border-radius:10px; display:flex; justify-content:space-between; align-items:center; }
+        .role { font-size:12px; color:gray; }
+    </style>
+</head>
+<body>
+
+<h2>👑 Gestion des Admins</h2>
+
+<!-- ➕ AJOUT ADMIN -->
+<form method="POST" action="/admin/add_admin">
+    <input type="text" name="username" placeholder="Username" required>
+    <input type="password" name="password" placeholder="Mot de passe" required>
+    <button type="submit">Ajouter</button>
+</form>
+
+<!-- 📋 LISTE ADMINS -->
+{% for admin in admins %}
+<div class="admin">
+    <div>
+        <strong>{{ admin.username }}</strong>
+        <div class="role">{{ admin.role }}</div>
+    </div>
+
+    {% if admin.role != "super_admin" %}
+    <form method="POST" action="/admin/delete_admin/{{ admin.id }}">
+        <button style="background:red; color:white;">Supprimer</button>
+    </form>
+    {% endif %}
+</div>
+{% endfor %}
+
+</body>
+</html>
