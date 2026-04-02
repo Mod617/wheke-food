@@ -175,8 +175,10 @@ with app.app_context():
 application = app
 
 if __name__ == "__main__":
+    # Utilise le port 8080 par défaut pour correspondre à ta variable Railway
+    port = int(os.environ.get("PORT", 8080))
     socketio.run(
         app,
         host="0.0.0.0",
-        port=int(os.environ.get("PORT", 5000))
+        port=port
     )
