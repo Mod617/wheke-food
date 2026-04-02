@@ -1,0 +1,9 @@
+Flask
+flask-sqlalchemy
+flask-login
+flask-socketio
+eventlet
+flask-mail
+flask-limiter
+psycopg2-binary
+gunicorn
