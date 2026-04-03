@@ -22,7 +22,7 @@
             background: white;
             border-radius: 20px;
             box-shadow: 0 8px 20px rgba(0,0,0,0.1);
-            overflow: visible; /* Changé pour laisser voir les badges */
+            overflow: visible; 
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -177,7 +177,7 @@
             <p style="font-weight:bold; font-size:1.2rem; margin: 0;">
                 Total : <span id="panier_total">0</span> FCFA
             </p>
-            <button onclick="window.location.href='/commander'"
+            <button onclick="allerVersCommande()"
                 style="margin-top:10px; padding:15px; border:none; border-radius:12px; background:black; color:white; cursor:pointer; font-weight:bold; width:100%; font-size: 1rem;">
                 Commander maintenant
             </button>
@@ -305,33 +305,33 @@
                 <tbody>
                     <tr>
                         <td data-label="Zone"><span class="zone-tag">ZONE A</span></td>
-                        <td data-label="Quartiers">Sainte Cécile, Ladji, Sikècodji, 16 Ampoules, Vossa, Gbejdromede (I et II), Gbegamey, Jéricho, Saint Jean, Zongo, Houéyiho, Cadjèhoun, Cocotiers, Haie Vive, Guinkomey, Étoile Rouge.</td>
+                        <td data-label="Quartiers">Sainte Cécile, Ladji, Sikècodji, 16 Ampoules, Vossa, Gbejdromede, Gbegamey, Jéricho, Saint Jean, Zongo, Houéyiho, Cadjèhoun, Cocotiers, Haie Vive, Guinkomey, Étoile Rouge.</td>
                         <td data-label="Standard"><span class="price-tag">500F</span> (15-25 min)</td>
-                        <td data-label="Express"><span class="price-tag">800F</span> (< 15 min)</td>
+                        <td data-label="Express"><span class="price-tag">800F</span> (&lt; 15 min)</td>
                     </tr>
                     <tr>
                         <td data-label="Zone"><span class="zone-tag">ZONE B</span></td>
-                        <td data-label="Quartiers">Adogleta, Segbeya, Djidjè, Dantokpa, Ganhi, Jonquet, Avakpa, Xwlacodji, Tokpa Hoho, Hindé, Vêdoko, Saint Michel, Enagnon, Placodji, Akpakpa Centre (Cpa, Midombo, Donaten).</td>
+                        <td data-label="Quartiers">Adogleta, Segbeya, Djidjè, Dantokpa, Ganhi, Jonquet, Avakpa, Xwlacodji, Tokpa Hoho, Hindé, Vêdoko, Saint Michel, Enagnon, Akpakpa Centre.</td>
                         <td data-label="Standard"><span class="price-tag">800F</span> (25-40 min)</td>
                         <td data-label="Express"><span class="price-tag">1000F</span> (20-30 min)</td>
                     </tr>
                     <tr>
                         <td data-label="Zone"><span class="zone-tag">ZONE C</span></td>
-                        <td data-label="Quartiers">Godomey, Fidjrossè, Agla, Kouhounou, Ménontin, Ste Rita, Fifadji, Jak, Kindonou, Lobozounkpa, Tankpè, Houéyiho 2, Sèkandji, Ablangandan.</td>
+                        <td data-label="Quartiers">Godomey, Fidjrossè, Agla, Kouhounou, Ménontin, Ste Rita, Fifadji, Jak, Kindonou, Lobozounkpa, Tankpè, Sèkandji, Ablangandan.</td>
                         <td data-label="Standard"><span class="price-tag">1000F</span> (40-55 min)</td>
                         <td data-label="Express"><span class="price-tag">1300F</span> (35-45 min)</td>
                     </tr>
                     <tr>
                         <td data-label="Zone"><span class="zone-tag">ZONE D</span></td>
-                        <td data-label="Quartiers">Université (UAC), Calavi Kpota, IITA, Bidossessi, Arconville, Zogbadjè, Akpakpa (Avotrou/PK10), Togoudo, Houèto, Cocotomey, Cité Vie Nouvelle.</td>
+                        <td data-label="Quartiers">Université (UAC), Calavi Kpota, IITA, Bidossessi, Arconville, Zogbadjè, Akpakpa PK10, Togoudo, Houèto, Cocotomey.</td>
                         <td data-label="Standard"><span class="price-tag">1200F</span> (55-75 min)</td>
                         <td data-label="Express"><span class="price-tag">1500F</span> (45-60 min)</td>
                     </tr>
                     <tr>
                         <td data-label="Zone"><span class="zone-tag">ZONE E</span></td>
-                        <td data-label="Quartiers">Abomey-Calavi (Marché), Ouédo, Togba, Pahou, Glo-Djigbé, Sèmè-Kpodji, Zinvié, Akassato, Atrokpocodji.</td>
+                        <td data-label="Quartiers">Abomey-Calavi Marché, Ouédo, Togba, Pahou, Glo-Djigbé, Sèmè-Kpodji, Zinvié, Akassato, Atrokpocodji.</td>
                         <td data-label="Standard"><span class="price-tag">1500F</span> (75+ min)</td>
-                        <td data-label="Express"><span class="price-tag">2000F</span> (< 70 min)</td>
+                        <td data-label="Express"><span class="price-tag">2000F</span> (&lt; 70 min)</td>
                     </tr>
                 </tbody>
             </table>
@@ -348,10 +348,21 @@
     <script src="/static/script.js"></script>
     <script>
         function scrollToSection(id) {
-            document.getElementById(id).scrollIntoView({ behavior: "smooth" });
+            const el = document.getElementById(id);
+            if(el) el.scrollIntoView({ behavior: "smooth" });
         }
         function scrollToTop() {
             window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // Ajoute la fonction allerVersCommande ici au cas où elle manque dans script.js
+        function allerVersCommande() {
+            let p = JSON.parse(localStorage.getItem("panier")) || [];
+            if (p.length === 0) {
+                alert("Votre panier est vide !");
+                return;
+            }
+            window.location.href = '/commande';
         }
     </script>
 </body>
