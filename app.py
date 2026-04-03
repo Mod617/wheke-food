@@ -9,12 +9,12 @@ import uuid
 # Importation des extensions
 from extensions import db, login_manager, socketio
 
-from flask_mail import Mail, Message
+# On retire Flask-Mail car Railway bloque les ports SMTP
 from werkzeug.utils import secure_filename
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
-print("🚀 APPLICATION DEMARRE")
+print("🚀 APPLICATION WHÈKÈ FOOD DÉMARRE")
 
 app = Flask(__name__)
 
@@ -52,22 +52,6 @@ limiter = Limiter(
     default_limits=["200 per hour"],
     storage_uri="memory://" 
 )
-
-# =========================
-# MAIL (CORRECTIF PORT 465 SSL)
-# =========================
-
-app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 465
-app.config['MAIL_USE_TLS'] = False
-app.config['MAIL_USE_SSL'] = True
-app.config['MAIL_USERNAME'] = 'whekefood@gmail.com'
-# Récupéré depuis les variables Railway
-app.config['MAIL_PASSWORD'] = os.environ.get("MAIL_PASSWORD")
-app.config['MAIL_DEFAULT_SENDER'] = ('WHÈKÈ FOOD', 'whekefood@gmail.com')
-app.config['MAIL_ASCII_ATTACHMENTS'] = False
-
-mail = Mail(app)
 
 # =========================
 # ANTI BOT SAFE
@@ -132,36 +116,8 @@ def load_user(user_id):
 def contact_page():
     return render_template("contact.html")
 
-@app.route("/contact", methods=["POST"])
-@limiter.limit("5 per minute")
-def contact():
-    if not request.is_json:
-        return jsonify({"success": False, "error": "Format non supporté"}), 400
-        
-    data = request.get_json()
-    nom = data.get("nom")
-    email = data.get("email")
-    message = data.get("message")
-    
-    if not nom or not email or not message:
-        return jsonify({"success": False, "error": "Champs manquants"})
-
-    try:
-        msg = Message(
-            subject=f"📩 Nouveau message de {nom}", 
-            sender=app.config['MAIL_USERNAME'], 
-            recipients=["whekefood@gmail.com"],
-            reply_to=email
-        )
-        msg.body = f"Expéditeur: {nom}\nEmail: {email}\n\nMessage:\n{message}"
-        
-        mail.send(msg)
-        print(f"✅ Mail envoyé avec succès pour {nom}")
-        return jsonify({"success": True})
-        
-    except Exception as e:
-        print("🔥 ERREUR MAIL :", str(e))
-        return jsonify({"success": False, "error": str(e)})
+# Note : La route POST /contact n'est plus nécessaire car 
+# le formulaire utilise maintenant directement l'API WhatsApp.
 
 # Importation des routes principales
 with app.app_context():
