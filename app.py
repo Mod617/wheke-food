@@ -61,7 +61,7 @@ app.config['MAIL_SERVER'] = 'smtp.gmail.com'
 app.config['MAIL_PORT'] = 587
 app.config['MAIL_USE_TLS'] = True
 app.config['MAIL_USERNAME'] = 'whekefood@gmail.com'
-app.config['MAIL_PASSWORD'] = os.environ.get("sgcd hdng rzku mjvk")
+app.config['MAIL_PASSWORD'] = os.environ.get("sgcdhdngrzkumjvk")
 
 mail = Mail(app)
 
