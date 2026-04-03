@@ -54,7 +54,7 @@ limiter = Limiter(
 )
 
 # =========================
-# MAIL (CORRIGÉ POUR RAILWAY)
+# MAIL (CONFIGURATION FINALE)
 # =========================
 
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
@@ -62,8 +62,10 @@ app.config['MAIL_PORT'] = 587
 app.config['MAIL_USE_TLS'] = True
 app.config['MAIL_USE_SSL'] = False
 app.config['MAIL_USERNAME'] = 'whekefood@gmail.com'
-# On récupère le mot de passe depuis les variables Railway (plus sécurisé)
+# Récupéré depuis les variables Railway
 app.config['MAIL_PASSWORD'] = os.environ.get("MAIL_PASSWORD")
+app.config['MAIL_DEFAULT_SENDER'] = ('WHÈKÈ FOOD', 'whekefood@gmail.com')
+app.config['MAIL_ASCII_ATTACHMENTS'] = False
 
 mail = Mail(app)
 
