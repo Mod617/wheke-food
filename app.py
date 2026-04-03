@@ -54,14 +54,16 @@ limiter = Limiter(
 )
 
 # =========================
-# MAIL
+# MAIL (CORRIGÉ POUR RAILWAY)
 # =========================
 
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
 app.config['MAIL_PORT'] = 587
 app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USE_SSL'] = False
 app.config['MAIL_USERNAME'] = 'whekefood@gmail.com'
-app.config['MAIL_PASSWORD'] = os.environ.get("sgcdhdngrzkumjvk")
+# On récupère le mot de passe depuis les variables Railway (plus sécurisé)
+app.config['MAIL_PASSWORD'] = os.environ.get("MAIL_PASSWORD")
 
 mail = Mail(app)
 
@@ -131,7 +133,6 @@ def contact_page():
 @app.route("/contact", methods=["POST"])
 @limiter.limit("5 per minute")
 def contact():
-    # Ton JavaScript envoie du JSON, on vérifie donc ce format
     if not request.is_json:
         return jsonify({"success": False, "error": "Format non supporté"}), 400
         
@@ -144,22 +145,19 @@ def contact():
         return jsonify({"success": False, "error": "Champs manquants"})
 
     try:
-        # Configuration du message
         msg = Message(
             subject=f"📩 Nouveau message de {nom}", 
             sender=app.config['MAIL_USERNAME'], 
             recipients=["whekefood@gmail.com"],
-            reply_to=email  # Permet de répondre au client directement
+            reply_to=email
         )
         msg.body = f"Expéditeur: {nom}\nEmail: {email}\n\nMessage:\n{message}"
         
-        # Envoi effectif
         mail.send(msg)
         print(f"✅ Mail envoyé avec succès pour {nom}")
         return jsonify({"success": True})
         
     except Exception as e:
-        # Affichage de l'erreur précise dans les logs Railway
         print("🔥 ERREUR MAIL :", str(e))
         return jsonify({"success": False, "error": str(e)})
 
