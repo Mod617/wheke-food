@@ -245,7 +245,7 @@ def commander():
     if not telephone or not panier:
         return jsonify({"success": False, "message": "Téléphone ou panier vide"})
 
-    # 1. CALCUL DU TOTAL
+    # 1. CALCUL DU TOTAL (Identique à ton code)
     total_plats = 0
     for item in panier:
         met = models.Met.query.get(item.get("id"))
@@ -263,7 +263,7 @@ def commander():
     total_final = total_plats + prix_livraison
     track_id = str(uuid.uuid4())[:8].upper() 
 
-    # 2. ENREGISTREMENT EN BASE DE DONNÉES
+    # 2. ENREGISTREMENT DB (Identique à ton code)
     try:
         commande = models.Commande(
             telephone=telephone, adresse=adresse, gps=gps,
@@ -285,8 +285,7 @@ def commander():
     except Exception as e:
         return jsonify({"success": False, "message": "Erreur Base de données"})
 
-    # 3. APPEL DIRECT API FEDAPAY
-    # On vérifie Railway d'abord, puis la config Flask
+    # 3. APPEL API FEDAPAY (VERSION SÉCURISÉE)
     api_key = os.getenv('FEDAPAY_SECRET_KEY') or app.config.get('FEDAPAY_SECRET_KEY')
     env = os.getenv('FEDAPAY_ENVIRONMENT') or app.config.get('FEDAPAY_ENVIRONMENT', 'sandbox')
 
@@ -301,7 +300,8 @@ def commander():
         "currency": {"iso": "XOF"},
         "description": f"Commande {track_id}",
         "customer": {
-            "firstname": "Client", "lastname": telephone,
+            "firstname": "Client", 
+            "lastname": telephone,
             "email": "paiement@whekefood.com",
             "phone_number": {"number": telephone, "country": "bj"}
         },
@@ -309,25 +309,34 @@ def commander():
     }
 
     try:
+        # A. Créer la transaction
         req = requests.post(f"{base_url}/transactions", json=payload, headers=headers)
         res = req.json()
         
-        if req.status_code not in [200, 201]:
-            # C'est ici que l'erreur d'authentification est captée
-            return jsonify({"success": False, "message": f"FedaPay API: {res.get('message', 'Erreur inconnue')}"})
+        # On vérifie si la transaction a bien été créée
+        transaction_data = res.get('v1/transaction')
+        if not transaction_data:
+            return jsonify({"success": False, "message": f"FedaPay: {res.get('message', 'Erreur création transaction')}"})
 
-        trans_id = res['v1/transaction']['id']
+        trans_id = transaction_data.get('id')
+
+        # B. Générer le Token (le lien de paiement)
         token_req = requests.post(f"{base_url}/transactions/{trans_id}/token", headers=headers)
         token_res = token_req.json()
 
-        return jsonify({
-            "success": True, 
-            "redirect_url": token_res['v1/token']['url']
-        })
+        # C. Vérification finale du token
+        token_data = token_res.get('v1/token')
+        if token_data and 'url' in token_data:
+            return jsonify({
+                "success": True, 
+                "redirect_url": token_data['url']
+            })
+        else:
+            return jsonify({"success": False, "message": "FedaPay: Impossible de générer le lien de paiement"})
 
     except Exception as e:
-        print(f"❌ ERREUR CRITIQUE CONNEXION : {str(e)}") # Ceci apparaîtra dans tes logs Railway
-        return jsonify({"success": False, "message": f"Erreur de connexion : {str(e)}"})
+        return jsonify({"success": False, "message": f"Erreur connexion : {str(e)}"})
+    
 
 @app.route("/valider-paiement-final")
 def valider_paiement_final():
