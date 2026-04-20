@@ -245,7 +245,7 @@ def commander():
     if not telephone or not panier:
         return jsonify({"success": False, "message": "Téléphone ou panier vide"})
 
-    # 1. CALCUL DU TOTAL (Identique à ton code)
+    # 1. CALCUL DU TOTAL
     total_plats = 0
     for item in panier:
         met = models.Met.query.get(item.get("id"))
@@ -263,7 +263,7 @@ def commander():
     total_final = total_plats + prix_livraison
     track_id = str(uuid.uuid4())[:8].upper() 
 
-    # 2. ENREGISTREMENT DB (Identique à ton code)
+    # 2. ENREGISTREMENT DB
     try:
         commande = models.Commande(
             telephone=telephone, adresse=adresse, gps=gps,
@@ -285,7 +285,7 @@ def commander():
     except Exception as e:
         return jsonify({"success": False, "message": "Erreur Base de données"})
 
-    # 3. APPEL API FEDAPAY (VERSION SÉCURISÉE)
+    # 3. APPEL API FEDAPAY (VERSION STABLE)
     api_key = os.getenv('FEDAPAY_SECRET_KEY') or app.config.get('FEDAPAY_SECRET_KEY')
     env = os.getenv('FEDAPAY_ENVIRONMENT') or app.config.get('FEDAPAY_ENVIRONMENT', 'sandbox')
 
@@ -301,9 +301,8 @@ def commander():
         "description": f"Commande {track_id}",
         "customer": {
             "firstname": "Client", 
-            "lastname": telephone,
-            "email": "paiement@whekefood.com",
-            "phone_number": {"number": telephone, "country": "bj"}
+            "lastname": "Wheke", # Simplifié pour le test
+            "email": "paiement@whekefood.com"
         },
         "callback_url": url_for('valider_paiement_final', tracking_id=track_id, _external=True, _scheme='https')
     }
@@ -313,18 +312,17 @@ def commander():
         req = requests.post(f"{base_url}/transactions", json=payload, headers=headers)
         res = req.json()
         
-        # On vérifie si la transaction a bien été créée
         transaction_data = res.get('v1/transaction')
         if not transaction_data:
-            return jsonify({"success": False, "message": f"FedaPay: {res.get('message', 'Erreur création transaction')}"})
+            return jsonify({"success": False, "message": f"FedaPay (A): {res.get('message', 'Erreur création')}"})
 
         trans_id = transaction_data.get('id')
 
-        # B. Générer le Token (le lien de paiement)
-        token_req = requests.post(f"{base_url}/transactions/{trans_id}/token", headers=headers)
+        # B. Générer le Token (On ajoute json={} pour la stabilité)
+        token_req = requests.post(f"{base_url}/transactions/{trans_id}/token", json={}, headers=headers)
         token_res = token_req.json()
 
-        # C. Vérification finale du token
+        # C. Vérification finale
         token_data = token_res.get('v1/token')
         if token_data and 'url' in token_data:
             return jsonify({
@@ -332,7 +330,8 @@ def commander():
                 "redirect_url": token_data['url']
             })
         else:
-            return jsonify({"success": False, "message": "FedaPay: Impossible de générer le lien de paiement"})
+            msg = token_res.get('message', 'Lien de paiement indisponible')
+            return jsonify({"success": False, "message": f"FedaPay (B): {msg}"})
 
     except Exception as e:
         return jsonify({"success": False, "message": f"Erreur connexion : {str(e)}"})
