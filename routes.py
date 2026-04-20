@@ -230,13 +230,19 @@ def accueil():
 # =========================
 @app.route("/commander", methods=["POST"])
 def commander():
-    # --- IMPORT FORCE (Pour résoudre 'no attribute Transaction') ---
+    # --- IMPORT DYNAMIQUE (Solution ultime pour Railway) ---
     import fedapay
     try:
-        from fedapay import Transaction
-    except ImportError:
-        from fedapay.fedapay import Transaction
-    # -------------------------------------------------------------
+        # On essaie d'abord l'accès direct via le module
+        FedaPayTransaction = fedapay.Transaction
+    except AttributeError:
+        # Si échoué, on cherche dans le sous-module interne
+        try:
+            import fedapay.fedapay as fp_internal
+            FedaPayTransaction = fp_internal.Transaction
+        except:
+            return jsonify({"success": False, "message": "Erreur d'initialisation FedaPay"})
+    # -----------------------------------------------------
 
     data = request.get_json()
 
@@ -340,9 +346,9 @@ def commander():
 
     db.session.commit()
 
-    # 🔥 AJOUT FEDAPAY (Utilisation de la classe importée plus haut)
+    # 🔥 AJOUT FEDAPAY
     try:
-        transaction = Transaction.create(
+        transaction = FedaPayTransaction.create(
             amount=int(total_final),
             currency={'iso': 'XOF'},
             description=f"Commande {commande.tracking_id}",
@@ -371,11 +377,13 @@ def commander():
         
 @app.route("/valider-paiement-final")
 def valider_paiement_final():
-    # --- IMPORT FORCE ---
+    # --- IMPORT DYNAMIQUE ---
+    import fedapay
     try:
-        from fedapay import Transaction
-    except ImportError:
-        from fedapay.fedapay import Transaction
+        FedaPayTransaction = fedapay.Transaction
+    except AttributeError:
+        import fedapay.fedapay as fp_internal
+        FedaPayTransaction = fp_internal.Transaction
     # -----------------------
     
     id_transaction = request.args.get('id')
@@ -385,7 +393,7 @@ def valider_paiement_final():
         return redirect("/")
 
     try:
-        tr = Transaction.retrieve(id_transaction)
+        tr = FedaPayTransaction.retrieve(id_transaction)
         
         if tr.status == 'approved':
             commande = models.Commande.query.filter_by(tracking_id=tracking_id).first()
