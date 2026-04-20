@@ -285,30 +285,31 @@ def commander():
     except Exception as e:
         return jsonify({"success": False, "message": "Erreur Base de données"})
 
-    # 3. APPEL API FEDAPAY (BÉNIN & EMAIL RESTO)
-    api_key = os.getenv('FEDAPAY_SECRET_KEY') or app.config.get('FEDAPAY_SECRET_KEY')
-    base_url = "https://sandbox-api.fedapay.com/v1" if "sandbox" in api_key else "https://api.fedapay.com/v1"
+    # 3. APPEL API FEDAPAY LIVE
+    api_key = os.getenv('FEDAPAY_SECRET_KEY')
+    # Force l'URL Live si la clé est une clé live
+    base_url = "https://api.fedapay.com/v1" if "live" in api_key else "https://sandbox-api.fedapay.com/v1"
 
     headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
     
     payload = {
         "amount": int(total_final),
         "currency": {"iso": "XOF"},
-        "description": f"Commande {track_id}",
+        "description": f"Commande {track_id} - Wheke Food",
         "customer": {
             "firstname": "Client", 
             "lastname": "Bénin",
             "email": "whekefood@gmail.com",
             "phone_number": {
                 "number": telephone, 
-                "country": "bj" 
+                "country": "bj" # <--- Forçage strict du Bénin
             }
         },
         "callback_url": url_for('valider_paiement_final', tracking_id=track_id, _external=True, _scheme='https')
     }
 
     try:
-        # A. Créer la transaction
+        # A. Création transaction
         req = requests.post(f"{base_url}/transactions", json=payload, headers=headers)
         res = req.json()
         
@@ -316,25 +317,20 @@ def commander():
         trans_id = transaction_data.get('id')
 
         if not trans_id:
-            return jsonify({"success": False, "message": f"FedaPay (A): {res.get('message', 'ID manquant')}"})
+            return jsonify({"success": False, "message": "Erreur lors de l'initialisation du paiement."})
 
-        # B. Générer le Token
+        # B. Génération du lien de paiement réel
         token_req = requests.post(f"{base_url}/transactions/{trans_id}/token", json={}, headers=headers)
         token_res = token_req.json()
 
-        # C. Lien de redirection
         token_data = token_res.get('v1/token') or token_res
         if token_data and isinstance(token_data, dict) and token_data.get('url'):
-            return jsonify({
-                "success": True, 
-                "redirect_url": token_data['url']
-            })
+            return jsonify({"success": True, "redirect_url": token_data['url']})
         else:
-            msg = token_res.get('message', 'Lien indisponible')
-            return jsonify({"success": False, "message": f"FedaPay (B): {msg}"})
+            return jsonify({"success": False, "message": "Le guichet de paiement est indisponible."})
 
     except Exception as e:
-        return jsonify({"success": False, "message": f"Erreur système : {str(e)}"})
+        return jsonify({"success": False, "message": "Erreur de connexion au service de paiement."})
     
 
 @app.route("/valider-paiement-final")
