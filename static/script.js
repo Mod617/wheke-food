@@ -415,26 +415,24 @@ function supprimer(index) {
 
 function afficherPanier() {
     let div = document.getElementById("panier_items");
+    let btnPrincipal = document.getElementById("panier_btn");
     if (!div) return;
 
     div.innerHTML = "";
-
     let total = 0;
     let count = 0;
 
     panier.forEach((item, index) => {
         let prixTotal = item.prix * item.quantite;
-
         total += prixTotal;
         count += item.quantite;
 
         div.innerHTML += `
-        <div style="display:flex;gap:12px;padding:12px;margin-bottom:12px;border-radius:12px;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,0.08);align-items:center;">
+        <div style="display:flex;gap:12px;padding:12px;margin-bottom:12px;border-radius:12px;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,0.08);align-items:center;color:black;">
             
             <img src="${item.image || ''}" style="width:65px;height:65px;object-fit:cover;border-radius:10px;">
 
             <div style="flex:1;">
-                
                 <div style="font-weight:bold;margin-bottom:4px;">
                     ${item.nom}
                 </div>
@@ -443,24 +441,13 @@ function afficherPanier() {
                     ${item.prix} FCFA
                 </div>
 
-                <!-- 🔥 QUANTITÉ PROPRE -->
                 <div style="margin-top:8px;display:flex;align-items:center;gap:10px;">
-                    
                     <button onclick="diminuer(${index})"
                         style="width:30px;height:30px;background:#ff3b3b;color:white;border:none;border-radius:8px;font-weight:bold;cursor:pointer;">
                         -
                     </button>
 
-                    <div style="
-                        min-width:35px;
-                        text-align:center;
-                        font-weight:bold;
-                        font-size:16px;
-                        background:#f2f2f2;
-                        padding:5px 10px;
-                        border-radius:8px;
-                        color:#000 !important;
-                    ">
+                    <div style="min-width:35px;text-align:center;font-weight:bold;font-size:16px;background:#f2f2f2;padding:5px 10px;border-radius:8px;color:#000;">
                         ${item.quantite}
                     </div>
 
@@ -468,31 +455,32 @@ function afficherPanier() {
                         style="width:30px;height:30px;background:#00c853;color:white;border:none;border-radius:8px;font-weight:bold;cursor:pointer;">
                         +
                     </button>
-
                 </div>
 
-                <!-- 💰 PRIX TOTAL -->
                 <div style="margin-top:6px;color:#28a745;font-weight:bold;">
                     ${prixTotal} FCFA
                 </div>
 
-                <!-- 🗑️ SUPPRIMER -->
                 <button onclick="supprimer(${index})"
                     style="margin-top:8px;background:#111;color:white;border:none;padding:6px;border-radius:8px;width:100%;cursor:pointer;">
                     Supprimer
                 </button>
-
             </div>
-
         </div>
         `;
     });
 
+    // Mise à jour des compteurs (Popup)
     let countDiv = document.getElementById("panier_count");
     if (countDiv) countDiv.innerText = count;
 
     let totalDiv = document.getElementById("panier_total");
     if (totalDiv) totalDiv.innerText = total;
+
+    // MISE À JOUR DU BOUTON PRINCIPAL (Fix pour le rafraîchissement)
+    if (btnPrincipal) {
+        btnPrincipal.innerHTML = `🛒 (${count}) • ${total} FCFA`;
+    }
 }
 
 // ==========================
