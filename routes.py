@@ -285,7 +285,7 @@ def commander():
     except Exception as e:
         return jsonify({"success": False, "message": "Erreur Base de données"})
 
-    # 3. APPEL API FEDAPAY (VERSION STABLE)
+    # 3. APPEL API FEDAPAY (VERSION TEST FORCÉ)
     api_key = os.getenv('FEDAPAY_SECRET_KEY') or app.config.get('FEDAPAY_SECRET_KEY')
     env = os.getenv('FEDAPAY_ENVIRONMENT') or app.config.get('FEDAPAY_ENVIRONMENT', 'sandbox')
 
@@ -295,14 +295,16 @@ def commander():
 
     headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
     
+    # Payload avec numéro de test FedaPay pour débloquer le token
     payload = {
         "amount": int(total_final),
         "currency": {"iso": "XOF"},
         "description": f"Commande {track_id}",
         "customer": {
             "firstname": "Client", 
-            "lastname": "Wheke", # Simplifié pour le test
-            "email": "paiement@whekefood.com"
+            "lastname": "Wheke",
+            "email": "paiement@whekefood.com",
+            "phone_number": {"number": "66000001", "country": "bj"}
         },
         "callback_url": url_for('valider_paiement_final', tracking_id=track_id, _external=True, _scheme='https')
     }
@@ -318,11 +320,11 @@ def commander():
 
         trans_id = transaction_data.get('id')
 
-        # B. Générer le Token (On ajoute json={} pour la stabilité)
+        # B. Générer le Token (On force le json vide pour la Sandbox)
         token_req = requests.post(f"{base_url}/transactions/{trans_id}/token", json={}, headers=headers)
         token_res = token_req.json()
 
-        # C. Vérification finale
+        # C. Extraction du lien de redirection
         token_data = token_res.get('v1/token')
         if token_data and 'url' in token_data:
             return jsonify({
@@ -330,7 +332,8 @@ def commander():
                 "redirect_url": token_data['url']
             })
         else:
-            msg = token_res.get('message', 'Lien de paiement indisponible')
+            # On affiche le message d'erreur réel de FedaPay si le token échoue
+            msg = token_res.get('message', 'Lien indisponible')
             return jsonify({"success": False, "message": f"FedaPay (B): {msg}"})
 
     except Exception as e:
