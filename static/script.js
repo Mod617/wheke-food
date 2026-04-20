@@ -555,7 +555,7 @@ function envoyerCommande() {
     let adresse = prompt("📍 Entrez votre quartier :");
     if (!adresse) return;
 
-    let livraison = prompt("🚚 Type de livraison (livraison / retrait) :");
+    let livraison = prompt("🚚 Type de livraison (standard / express / retrait) :");
     if (!livraison) {
         alert("Choisir un type de livraison");
         return;
@@ -565,7 +565,8 @@ function envoyerCommande() {
         telephone: telephone,
         adresse: adresse,
         gps: "",
-        livraison: livraison,
+        livraison: livraison.toLowerCase(),
+        zone: adresse, // 👈 Important pour ton calcul de prix côté Python
         panier: panier.map(item => ({
             id: item.id,
             qte: item.quantite
@@ -581,13 +582,17 @@ function envoyerCommande() {
     })
     .then(res => res.json())
     .then(data => {
-        if (data.success) {
+        if (data.success && data.redirect_url) {
+            
+            // ✅ On vide le panier local avant de payer
+            panier = [];
+            localStorage.removeItem("panier");
 
-            // 🔥 REDIRECTION AUTOMATIQUE
-            window.location.href = "/suivi/" + data.tracking;
+            // 🔥 REDIRECTION VERS LA PAGE DE PAIEMENT SÉCURISÉE
+            window.location.href = data.redirect_url;
 
         } else {
-            alert("❌ " + (data.message || "Erreur commande"));
+            alert("❌ " + (data.message || "Erreur lors de la préparation du paiement"));
         }
     })
     .catch(() => {

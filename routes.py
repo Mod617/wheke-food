@@ -230,7 +230,6 @@ def accueil():
 # =========================
 @app.route("/commander", methods=["POST"])
 def commander():
-
     data = request.get_json()
 
     telephone = data.get("telephone")
@@ -253,7 +252,6 @@ def commander():
 
     # ✅ CALCUL TOTAL PLATS
     for item in panier:
-
         met_id = item.get("id")
         quantite = int(item.get("qte", 1))
 
@@ -268,7 +266,6 @@ def commander():
             prix_reel = met.prix
 
         prix_reel = round(prix_reel)
-
         total_plats += prix_reel * quantite
 
     # 🔥 GESTION LIVRAISON AUTO (CORRIGÉE)
@@ -276,7 +273,7 @@ def commander():
     total_final = None
 
     if zone and zone.strip() != "":
-
+        from sqlalchemy import func
         # ✅ CORRECTION ICI (égalité exacte)
         zone_db = models.Zone.query.filter(
             func.lower(models.Zone.nom) == zone.strip().lower()
@@ -292,10 +289,8 @@ def commander():
         zone = zone.strip() if zone else None
 
         if zone_db:
-
             if livraison == "standard":
                 prix_livraison = zone_db.prix_standard
-
             elif livraison == "express":
                 prix_livraison = zone_db.prix_express
 
@@ -306,15 +301,14 @@ def commander():
             else:
                 total_final = total_plats
 
-    # ✅ CREATION COMMANDE
+    # ✅ CREATION COMMANDE (On garde tout, mais on met le statut en attente)
     commande = models.Commande(
         telephone=telephone,
         adresse=adresse,
         gps=gps,
         type_livraison=livraison,
-        statut="recu",
+        statut="attente_paiement", # On change juste le statut ici
         tracking_id=generer_tracking(),
-
         prix_livraison=prix_livraison,
         total=total_final,
         zone=zone
@@ -325,10 +319,8 @@ def commander():
 
     # ✅ ITEMS
     for item in panier:
-
         met_id = item.get("id")
         quantite = int(item.get("qte", 1))
-
         met = models.Met.query.get(met_id)
 
         if not met:
@@ -348,15 +340,70 @@ def commander():
             quantite=quantite,
             image=met.media
         )
-
         db.session.add(ligne)
 
     db.session.commit()
 
-    return jsonify({
-        "success": True,
-        "tracking": commande.tracking_id
-    })
+    # 🔥 AJOUT FEDAPAY : Création du lien de paiement avant de répondre au JS
+    try:
+        from fedapay import Transaction
+        transaction = Transaction.create(
+            amount=int(total_final),
+            currency={'iso': 'XOF'},
+            description=f"Commande {commande.tracking_id}",
+            customer={
+                'firstname': 'Client',
+                'lastname': telephone,
+                'email': 'paiement@whekefood.com',
+                'phone_number': {'number': telephone, 'country': 'bj'}
+            },
+            callback_url=url_for('valider_paiement_final', tracking_id=commande.tracking_id, _external=True)
+        )
+        token = transaction.generate_token()
+
+        return jsonify({
+            "success": True,
+            "redirect_url": token.url # On envoie l'URL FedaPay au lieu de juste le succès
+        })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "message": "Erreur FedaPay: " + str(e)
+        })
+
+        
+@app.route("/valider-paiement-final")
+def valider_paiement_final():
+    from fedapay import Transaction
+    
+    # 1. On récupère les infos envoyées par FedaPay dans l'URL
+    id_transaction = request.args.get('id')
+    tracking_id = request.args.get('tracking_id')
+
+    if not id_transaction or not tracking_id:
+        return redirect(url_for('page_commande'))
+
+    try:
+        # 2. On demande à FedaPay le statut réel de cette transaction
+        tr = Transaction.retrieve(id_transaction)
+        
+        if tr.status == 'approved':
+            # 3. Le paiement est bon ! On cherche la commande et on la valide
+            commande = models.Commande.query.filter_by(tracking_id=tracking_id).first()
+            if commande:
+                commande.statut = "recu" # Elle passe enfin en 'recu' pour la cuisine
+                db.session.commit()
+                
+                # 4. On redirige vers ta page de suivi
+                return redirect(f"/suivi.html?id={tracking_id}&status=success")
+        
+        # Si ce n'est pas approuvé
+        return "Le paiement n'a pas pu être validé. Veuillez contacter le support.", 400
+
+    except Exception as e:
+        print(f"Erreur validation : {str(e)}")
+        return "Une erreur technique est survenue.", 500        
 # =========================
 # LOGIN ADMIN
 # =========================

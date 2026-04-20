@@ -5,6 +5,7 @@ monkey.patch_all()
 from flask import Flask, request, jsonify, render_template, abort, redirect, url_for
 import os
 import uuid
+from fedapay import FedaPay, Transaction # <--- Ajoute cette ligne
 
 # Importation des extensions
 from extensions import db, login_manager, socketio
@@ -22,8 +23,17 @@ app = Flask(__name__)
 # CONFIG
 # =========================
 
+# =========================
+# CONFIG
+# =========================
+
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "super_secret_key")
+
+# --- AJOUT FEDAPAY ICI ---
+FedaPay.set_api_key(os.environ.get("FEDAPAY_SECRET_KEY", "sk_live_METS_TA_CLE_ICI"))
+FedaPay.set_environment("live") 
+# -------------------------
 
 # DATABASE
 db_url = os.environ.get("DATABASE_URL")
