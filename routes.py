@@ -230,7 +230,8 @@ def accueil():
 # =========================
 @app.route("/commander", methods=["POST"])
 def commander():
-    from fedapay.fedapay import FedaPay
+    # Utilisation de l'objet Transaction tel que défini dans le SDK
+    from fedapay import Transaction
     
     data = request.get_json()
 
@@ -313,9 +314,10 @@ def commander():
 
     db.session.commit()
 
-    # 🔥 PAIEMENT FEDAPAY (SYNTAXE v0.3.0)
+    # 🔥 PAIEMENT FEDAPAY
     try:
-        transaction = FedaPay.create(
+        # Création de la transaction via le SDK
+        transaction = Transaction.create(
             amount=int(total_final),
             currency={'iso': 'XOF'},
             description=f"Commande {commande.tracking_id}",
@@ -328,7 +330,7 @@ def commander():
             callback_url=url_for('valider_paiement_final', tracking_id=commande.tracking_id, _external=True)
         )
         
-        # Pour la v0.3.0, on utilise generate_token() pour obtenir l'URL
+        # Génération du token de paiement (Lien FedaPay)
         token = transaction.generate_token()
 
         return jsonify({
@@ -345,7 +347,7 @@ def commander():
     
 @app.route("/valider-paiement-final")
 def valider_paiement_final():
-    from fedapay.fedapay import FedaPay
+    from fedapay import Transaction
     
     id_transaction = request.args.get('id')
     tracking_id = request.args.get('tracking_id')
@@ -354,8 +356,8 @@ def valider_paiement_final():
         return redirect("/")
 
     try:
-        # Dans la v0.3.0, on utilise FedaPay.retrieve
-        tr = FedaPay.retrieve(id_transaction)
+        # Récupération de la transaction pour vérifier le statut
+        tr = Transaction.retrieve(id_transaction)
         
         if tr.status == 'approved':
             commande = models.Commande.query.filter_by(tracking_id=tracking_id).first()
@@ -368,7 +370,7 @@ def valider_paiement_final():
 
     except Exception as e:
         print(f"❌ Erreur validation : {str(e)}")
-        return "Une erreur technique est survenue lors de la vérification.", 500    
+        return "Une erreur technique est survenue lors de la vérification.", 500  
 # =========================
 # LOGIN ADMIN
 # =========================
