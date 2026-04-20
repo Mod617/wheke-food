@@ -230,9 +230,13 @@ def accueil():
 # =========================
 @app.route("/commander", methods=["POST"])
 def commander():
-    # --- IMPORT COMPATIBLE (Correction selon tes logs) ---
+    # --- IMPORT FORCE (Pour résoudre 'no attribute Transaction') ---
     import fedapay
-    # -----------------------------------------------------
+    try:
+        from fedapay import Transaction
+    except ImportError:
+        from fedapay.fedapay import Transaction
+    # -------------------------------------------------------------
 
     data = request.get_json()
 
@@ -336,9 +340,9 @@ def commander():
 
     db.session.commit()
 
-    # 🔥 AJOUT FEDAPAY (Appel direct via le module)
+    # 🔥 AJOUT FEDAPAY (Utilisation de la classe importée plus haut)
     try:
-        transaction = fedapay.Transaction.create(
+        transaction = Transaction.create(
             amount=int(total_final),
             currency={'iso': 'XOF'},
             description=f"Commande {commande.tracking_id}",
@@ -367,8 +371,11 @@ def commander():
         
 @app.route("/valider-paiement-final")
 def valider_paiement_final():
-    # --- IMPORT COMPATIBLE ---
-    import fedapay
+    # --- IMPORT FORCE ---
+    try:
+        from fedapay import Transaction
+    except ImportError:
+        from fedapay.fedapay import Transaction
     # -----------------------
     
     id_transaction = request.args.get('id')
@@ -378,8 +385,7 @@ def valider_paiement_final():
         return redirect("/")
 
     try:
-        # Appel via le module fedapay
-        tr = fedapay.Transaction.retrieve(id_transaction)
+        tr = Transaction.retrieve(id_transaction)
         
         if tr.status == 'approved':
             commande = models.Commande.query.filter_by(tracking_id=tracking_id).first()
