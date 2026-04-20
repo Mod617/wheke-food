@@ -245,7 +245,7 @@ def commander():
     if not telephone or not panier:
         return jsonify({"success": False, "message": "Téléphone ou panier vide"})
 
-    # 1. CALCUL DU TOTAL (Vérifie que total_final n'est pas 0)
+    # 1. CALCUL DU TOTAL
     total_plats = 0
     for item in panier:
         met = models.Met.query.get(item.get("id"))
@@ -285,9 +285,8 @@ def commander():
     except Exception as e:
         return jsonify({"success": False, "message": "Erreur Base de données"})
 
-    # 3. APPEL API FEDAPAY (FORÇAGE DU MODE)
+    # 3. APPEL API FEDAPAY (BÉNIN & EMAIL RESTO)
     api_key = os.getenv('FEDAPAY_SECRET_KEY') or app.config.get('FEDAPAY_SECRET_KEY')
-    # On force l'URL sandbox si la clé contient 'sandbox'
     base_url = "https://sandbox-api.fedapay.com/v1" if "sandbox" in api_key else "https://api.fedapay.com/v1"
 
     headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
@@ -298,8 +297,12 @@ def commander():
         "description": f"Commande {track_id}",
         "customer": {
             "firstname": "Client", 
-            "lastname": telephone,
-            "email": "paiement@whekefood.com" # Email fixe pour valider le customer
+            "lastname": "Bénin",
+            "email": "whekefood@gmail.com",
+            "phone_number": {
+                "number": telephone, 
+                "country": "bj" 
+            }
         },
         "callback_url": url_for('valider_paiement_final', tracking_id=track_id, _external=True, _scheme='https')
     }
@@ -309,18 +312,17 @@ def commander():
         req = requests.post(f"{base_url}/transactions", json=payload, headers=headers)
         res = req.json()
         
-        # On cherche l'ID soit dans 'v1/transaction' soit à la racine (selon la version de l'API)
         transaction_data = res.get('v1/transaction') or res
         trans_id = transaction_data.get('id')
 
         if not trans_id:
             return jsonify({"success": False, "message": f"FedaPay (A): {res.get('message', 'ID manquant')}"})
 
-        # B. Générer le Token (On force un json vide pour réveiller l'API)
+        # B. Générer le Token
         token_req = requests.post(f"{base_url}/transactions/{trans_id}/token", json={}, headers=headers)
         token_res = token_req.json()
 
-        # C. Extraction du lien
+        # C. Lien de redirection
         token_data = token_res.get('v1/token') or token_res
         if token_data and isinstance(token_data, dict) and token_data.get('url'):
             return jsonify({
@@ -339,38 +341,41 @@ def commander():
 def valider_paiement_final():
     import requests
     import os
-    id_transaction = request.args.get('id')
+    
+    # 1. ATTENTION : FedaPay renvoie souvent 'id' ou 'transaction_id'
+    id_transaction = request.args.get('id') or request.args.get('transaction_id')
     tracking_id = request.args.get('tracking_id')
 
-    if not id_transaction:
+    if not id_transaction or not tracking_id:
         return redirect("/")
 
     api_key = os.getenv('FEDAPAY_SECRET_KEY') or app.config.get('FEDAPAY_SECRET_KEY')
-    env = os.getenv('FEDAPAY_ENVIRONMENT') or app.config.get('FEDAPAY_ENVIRONMENT', 'sandbox')
-
-    base_url = "https://api.fedapay.com/v1"
-    if env == "sandbox":
-        base_url = "https://sandbox-api.fedapay.com/v1"
+    # Forçage de l'URL comme dans la route /commander pour être cohérent
+    base_url = "https://sandbox-api.fedapay.com/v1" if "sandbox" in api_key else "https://api.fedapay.com/v1"
 
     headers = {"Authorization": f"Bearer {api_key}"}
 
     try:
-        # Vérification manuelle du statut sans utiliser le SDK
+        # Vérification du statut auprès de FedaPay
         req = requests.get(f"{base_url}/transactions/{id_transaction}", headers=headers)
         res = req.json()
         
-        # Structure de réponse FedaPay : res['v1/transaction']['status']
-        status = res.get('v1/transaction', {}).get('status')
+        # Extraction sécurisée du statut
+        transaction_data = res.get('v1/transaction') or res
+        status = transaction_data.get('status')
 
         if status == 'approved':
             commande = models.Commande.query.filter_by(tracking_id=tracking_id).first()
-            if commande:
+            if commande and commande.statut != "recu":
                 commande.statut = "recu"
+                # Optionnel: tu peux aussi enregistrer l'ID FedaPay en base si tu as un champ prévu
                 db.session.commit()
-                # On redirige vers une page de succès ou le dashboard
-                return redirect(f"/suivi/{tracking_id}?status=success")
+            
+            return redirect(f"/suivi/{tracking_id}?status=success")
         
-        return redirect("/")
+        # Si le paiement a échoué ou est annulé
+        return redirect(f"/suivi/{tracking_id}?status=failed")
+        
     except Exception as e:
         print(f"Erreur validation : {e}")
         return redirect("/")
