@@ -231,14 +231,29 @@ def accueil():
 @app.route("/commander", methods=["POST"])
 def commander():
     import fedapay
-    try:
-        from fedapay import Transaction
-    except ImportError:
-        from fedapay.fedapay import Transaction
+    
+    # --- DÉTECTION DYNAMIQUE DE TRANSACTION (Correction Import) ---
+    Transaction = getattr(fedapay, 'Transaction', None)
+    if not Transaction:
+        # Secours pour les structures imbriquées v0.3.0+
+        for attr in dir(fedapay):
+            if attr.lower() == 'transaction':
+                Transaction = getattr(fedapay, attr)
+                break
+    
+    # Si toujours introuvable par attribut, on tente les imports internes connus
+    if not Transaction:
+        try:
+            from fedapay.fedapay import Transaction
+        except ImportError:
+            try:
+                from fedapay.models import Transaction
+            except ImportError:
+                return jsonify({"success": False, "message": "SDK FedaPay : Classe Transaction introuvable"})
+    # -------------------------------------------------------------
 
     data = request.get_json()
     telephone = data.get("telephone")
-    # On utilise .get() avec des valeurs par défaut pour éviter les crashs si un champ est vide
     adresse = data.get("adresse", "")
     gps = data.get("gps", "")
     panier = data.get("panier", [])
@@ -256,7 +271,6 @@ def commander():
             total_plats += round(prix_reel) * int(item.get("qte", 1))
 
     prix_livraison = 0
-    # Vérification sécurisée de la zone
     if zone_nom:
         from sqlalchemy import func
         z_db = models.Zone.query.filter(func.lower(models.Zone.nom) == zone_nom.strip().lower()).first()
@@ -265,10 +279,8 @@ def commander():
     
     total_final = total_plats + prix_livraison
 
-    # ⚠️ TRACKING SECURE : Si ta fonction generer_tracking() bug, on utilise un UUID par défaut
     import uuid
     track_id = str(uuid.uuid4())[:8].upper() 
-    # Si tu as ta propre fonction, tu peux faire : track_id = generer_tracking()
 
     try:
         commande = models.Commande(
@@ -280,7 +292,6 @@ def commander():
             tracking_id=track_id,
             prix_livraison=prix_livraison,
             total=total_final
-            # Retire 'zone=zone_nom' si tu n'es pas SÛR que la colonne existe dans models.py
         )
         db.session.add(commande)
         db.session.commit()
@@ -288,14 +299,16 @@ def commander():
         print(f"❌ Erreur Base de données : {str(e)}")
         return jsonify({"success": False, "message": "Erreur lors de l'enregistrement de la commande"})
 
-    # Ajout des items
     for item in panier:
         met = models.Met.query.get(item.get("id"))
         if met:
             p = round(met.prix - (met.prix * met.promo / 100) if met.promo > 0 else met.prix)
             db.session.add(models.CommandeItem(
-                commande_id=commande.id, met_nom=met.nom,
-                prix=p, quantite=int(item.get("qte", 1)), image=met.media
+                commande_id=commande.id, 
+                met_nom=met.nom,
+                prix=p, 
+                quantite=int(item.get("qte", 1)), 
+                image=met.media
             ))
     db.session.commit()
 
@@ -316,6 +329,7 @@ def commander():
         token = transaction.generate_token()
         return jsonify({"success": True, "redirect_url": token.url})
     except Exception as e:
+        print(f"❌ Erreur FedaPay : {str(e)}")
         return jsonify({"success": False, "message": f"Erreur FedaPay : {str(e)}"})
 
 @app.route("/valider-paiement-final")
