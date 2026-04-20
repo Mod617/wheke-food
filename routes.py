@@ -230,12 +230,9 @@ def accueil():
 # =========================
 @app.route("/commander", methods=["POST"])
 def commander():
-    # --- IMPORT SÉCURISÉ ---
-    try:
-        from fedapay import Transaction
-    except (ImportError, AttributeError):
-        from fedapay.fedapay import Transaction
-    # -----------------------
+    # --- IMPORT COMPATIBLE (Correction selon tes logs) ---
+    import fedapay
+    # -----------------------------------------------------
 
     data = request.get_json()
 
@@ -287,21 +284,13 @@ def commander():
         ).first()
 
         print("ZONE REÇUE :", zone)
-        print("ZONE NORMALISÉE :", zone.lower() if zone else None)
         print("ZONE TROUVÉE :", zone_db.nom if zone_db else "AUCUNE")
-        print("TYPE LIVRAISON :", livraison)
-
-        zones = models.Zone.query.all()
-        print("ZONES EN DB :", [z.nom for z in zones])
-        zone = zone.strip() if zone else None
 
         if zone_db:
             if livraison == "standard":
                 prix_livraison = zone_db.prix_standard
             elif livraison == "express":
                 prix_livraison = zone_db.prix_express
-
-            print("PRIX TROUVÉ :", prix_livraison)
 
             if prix_livraison is not None:
                 total_final = total_plats + prix_livraison
@@ -347,9 +336,9 @@ def commander():
 
     db.session.commit()
 
-    # 🔥 AJOUT FEDAPAY
+    # 🔥 AJOUT FEDAPAY (Appel direct via le module)
     try:
-        transaction = Transaction.create(
+        transaction = fedapay.Transaction.create(
             amount=int(total_final),
             currency={'iso': 'XOF'},
             description=f"Commande {commande.tracking_id}",
@@ -378,11 +367,8 @@ def commander():
         
 @app.route("/valider-paiement-final")
 def valider_paiement_final():
-    # --- IMPORT SÉCURISÉ ---
-    try:
-        from fedapay import Transaction
-    except (ImportError, AttributeError):
-        from fedapay.fedapay import Transaction
+    # --- IMPORT COMPATIBLE ---
+    import fedapay
     # -----------------------
     
     id_transaction = request.args.get('id')
@@ -392,7 +378,8 @@ def valider_paiement_final():
         return redirect("/")
 
     try:
-        tr = Transaction.retrieve(id_transaction)
+        # Appel via le module fedapay
+        tr = fedapay.Transaction.retrieve(id_transaction)
         
         if tr.status == 'approved':
             commande = models.Commande.query.filter_by(tracking_id=tracking_id).first()
@@ -405,7 +392,7 @@ def valider_paiement_final():
 
     except Exception as e:
         print(f"Erreur validation : {str(e)}")
-        return "Une erreur technique est survenue.", 500 
+        return "Une erreur technique est survenue.", 500
 # =========================
 # LOGIN ADMIN
 # =========================
