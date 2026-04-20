@@ -357,59 +357,58 @@ afficherPanierCommande();
 
 // ENVOI
 function envoyerCommande(){
-let tel = document.getElementById("telephone").value.trim();
-let qSelect = selectedQuartier;
-let qLibre = document.getElementById("quartierLibre").value.trim();
+    let tel = document.getElementById("telephone").value.trim();
+    let qSelect = selectedQuartier;
+    let qLibre = document.getElementById("quartierLibre").value.trim();
 
-// 🔥 priorité texte
-let quartier = qLibre || qSelect;
+    // 🔥 priorité texte
+    let quartier = qLibre || qSelect;
+    let livraison = document.getElementById("livraison").value;
 
-let livraison = document.getElementById("livraison").value;
+    if(!tel) return alert("📞 Numéro de téléphone requis");
+    if(!livraison) return alert("🚚 Veuillez choisir un type de livraison");
+    if(!quartier && !gps) return alert("📍 Adresse ou GPS requis");
 
-if(!tel) return alert("Numéro requis");
-if(!livraison) return alert("Choisir livraison");
-if(!quartier && !gps) return alert("Adresse ou GPS requis");
+    let panier = JSON.parse(localStorage.getItem("panier") || "[]");
+    if(panier.length === 0) return alert("🛒 Votre panier est vide");
 
-let panier = JSON.parse(localStorage.getItem("panier") || "[]");
+    // Animation du bouton pour éviter les doubles clics
+    const btn = event.target;
+    btn.disabled = true;
+    btn.innerText = "⏳ Traitement en cours...";
 
-fetch("/commander",{
-method:"POST",
-headers:{ "Content-Type":"application/json" },
-body: JSON.stringify({
-    telephone: tel,
-    adresse: quartier,
-    gps: gps || "",
-    livraison: livraison,
-    zone: quartier, 
-    panier: panier.map(p=>({id:p.id,qte:p.quantite}))
-})
-})
-.then(r=>r.json())
-.then(r=>{
-if(r.success){
+    fetch("/commander", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            telephone: tel,
+            adresse: quartier,
+            gps: gps || "",
+            livraison: livraison,
+            zone: quartier, 
+            panier: panier.map(p => ({ id: p.id, qte: p.quantite }))
+        })
+    })
+    .then(r => r.json())
+    .then(r => {
+        if(r.success && r.redirect_url){
+            // ✅ VIDER LE PANIER AVANT DE PARTIR AU PAIEMENT
+            localStorage.removeItem("panier");
 
-    // 🔥 STOCKER LA COMMANDE DANS L'HISTORIQUE LOCAL
-    let commandes = JSON.parse(localStorage.getItem("commandes") || "[]");
-
-    commandes.push({
-        tracking: r.tracking,
-        date: new Date().toLocaleString()
+            // 🔥 REDIRECTION VERS FEDAPAY
+            window.location.href = r.redirect_url;
+        } else {
+            alert("❌ Erreur : " + (r.message || "Vérifiez vos informations"));
+            btn.disabled = false;
+            btn.innerText = "✅ Commander";
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert("❌ Erreur de connexion au serveur");
+        btn.disabled = false;
+        btn.innerText = "✅ Commander";
     });
-
-    localStorage.setItem("commandes", JSON.stringify(commandes));
-
-    alert("Commande envoyée ✅ Code : "+r.tracking);
-
-    // Vider le panier
-    localStorage.removeItem("panier");
-
-    // Rediriger vers le suivi
-    window.location.href = "/suivi/" + r.tracking;
-
-}else{
-    alert("Erreur lors de l'envoi ❌");
-}
-});
 }
 </script>
 
