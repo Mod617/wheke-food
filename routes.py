@@ -230,7 +230,13 @@ def accueil():
 # =========================
 @app.route("/commander", methods=["POST"])
 def commander():
-    import fedapay
+    # --- IMPORT SÉCURISÉ ---
+    try:
+        from fedapay import Transaction
+    except (ImportError, AttributeError):
+        from fedapay.fedapay import Transaction
+    # -----------------------
+
     data = request.get_json()
 
     telephone = data.get("telephone")
@@ -343,7 +349,7 @@ def commander():
 
     # 🔥 AJOUT FEDAPAY
     try:
-        transaction = fedapay.Transaction.create(
+        transaction = Transaction.create(
             amount=int(total_final),
             currency={'iso': 'XOF'},
             description=f"Commande {commande.tracking_id}",
@@ -372,7 +378,12 @@ def commander():
         
 @app.route("/valider-paiement-final")
 def valider_paiement_final():
-    import fedapay
+    # --- IMPORT SÉCURISÉ ---
+    try:
+        from fedapay import Transaction
+    except (ImportError, AttributeError):
+        from fedapay.fedapay import Transaction
+    # -----------------------
     
     id_transaction = request.args.get('id')
     tracking_id = request.args.get('tracking_id')
@@ -381,7 +392,7 @@ def valider_paiement_final():
         return redirect("/")
 
     try:
-        tr = fedapay.Transaction.retrieve(id_transaction)
+        tr = Transaction.retrieve(id_transaction)
         
         if tr.status == 'approved':
             commande = models.Commande.query.filter_by(tracking_id=tracking_id).first()
@@ -394,7 +405,7 @@ def valider_paiement_final():
 
     except Exception as e:
         print(f"Erreur validation : {str(e)}")
-        return "Une erreur technique est survenue.", 500      
+        return "Une erreur technique est survenue.", 500 
 # =========================
 # LOGIN ADMIN
 # =========================

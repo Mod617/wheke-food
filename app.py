@@ -5,7 +5,15 @@ monkey.patch_all()
 from flask import Flask, request, jsonify, render_template, abort, redirect, url_for
 import os
 import uuid
-import fedapay # <--- Importation propre pour éviter l'ImportError
+
+# Importation sécurisée de FedaPay pour éviter AttributeError
+try:
+    from fedapay import FedaPay
+except (ImportError, AttributeError):
+    try:
+        from fedapay.fedapay import FedaPay
+    except (ImportError, AttributeError):
+        FedaPay = None
 
 # Importation des extensions
 from extensions import db, login_manager, socketio
@@ -26,9 +34,12 @@ app = Flask(__name__)
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "super_secret_key")
 
-# --- CONFIGURATION FEDAPAY (Format stable) ---
-fedapay.FedaPay.set_api_key(os.environ.get("FEDAPAY_SECRET_KEY", "sk_live_METS_TA_CLE_ICI"))
-fedapay.FedaPay.set_environment("live") 
+# --- CONFIGURATION FEDAPAY (Format robuste) ---
+if FedaPay:
+    FedaPay.set_api_key(os.environ.get("FEDAPAY_SECRET_KEY", "sk_live_METS_TA_CLE_ICI"))
+    FedaPay.set_environment("live")
+else:
+    print("⚠️ Attention : Le module FedaPay n'a pas pu être chargé correctement.")
 # ---------------------------------------------
 
 # DATABASE
