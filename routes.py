@@ -305,7 +305,7 @@ def commander():
             "email": "paiement@whekefood.com",
             "phone_number": {"number": telephone, "country": "bj"}
         },
-        "callback_url": url_for('valider_paiement_final', tracking_id=track_id, _external=True)
+        "callback_url": url_for('valider_paiement_final', tracking_id=track_id, _external=True, _scheme='https')
     }
 
     try:
@@ -326,7 +326,8 @@ def commander():
         })
 
     except Exception as e:
-        return jsonify({"success": False, "message": "Erreur de connexion FedaPay"})
+        print(f"❌ ERREUR CRITIQUE CONNEXION : {str(e)}") # Ceci apparaîtra dans tes logs Railway
+        return jsonify({"success": False, "message": f"Erreur de connexion : {str(e)}"})
 
 @app.route("/valider-paiement-final")
 def valider_paiement_final():
