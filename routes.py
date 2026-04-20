@@ -230,8 +230,19 @@ def accueil():
 # =========================
 @app.route("/commander", methods=["POST"])
 def commander():
-    # Utilisation de l'objet Transaction tel que défini dans le SDK
-    from fedapay import Transaction
+    # --- IMPORT DYNAMIQUE ET ROBUSTE (Solution au Mismatch) ---
+    import fedapay
+    # On cherche l'objet Transaction selon toutes les structures possibles du SDK
+    Transaction = getattr(fedapay, 'Transaction', None)
+    if not Transaction:
+        try:
+            from fedapay.models import Transaction
+        except ImportError:
+            try:
+                from fedapay.fedapay import Transaction
+            except ImportError:
+                return jsonify({"success": False, "message": "Erreur interne de configuration FedaPay"})
+    # ---------------------------------------------------------
     
     data = request.get_json()
 
@@ -316,7 +327,6 @@ def commander():
 
     # 🔥 PAIEMENT FEDAPAY
     try:
-        # Création de la transaction via le SDK
         transaction = Transaction.create(
             amount=int(total_final),
             currency={'iso': 'XOF'},
@@ -330,7 +340,6 @@ def commander():
             callback_url=url_for('valider_paiement_final', tracking_id=commande.tracking_id, _external=True)
         )
         
-        # Génération du token de paiement (Lien FedaPay)
         token = transaction.generate_token()
 
         return jsonify({
@@ -344,10 +353,17 @@ def commander():
             "success": False, 
             "message": "Erreur lors de la création du paiement"
         })
-    
+
 @app.route("/valider-paiement-final")
 def valider_paiement_final():
-    from fedapay import Transaction
+    import fedapay
+    # Même logique d'import sécurisé
+    Transaction = getattr(fedapay, 'Transaction', None)
+    if not Transaction:
+        try: from fedapay.models import Transaction
+        except: 
+            try: from fedapay.fedapay import Transaction
+            except: return "Erreur de configuration SDK", 500
     
     id_transaction = request.args.get('id')
     tracking_id = request.args.get('tracking_id')
@@ -356,7 +372,6 @@ def valider_paiement_final():
         return redirect("/")
 
     try:
-        # Récupération de la transaction pour vérifier le statut
         tr = Transaction.retrieve(id_transaction)
         
         if tr.status == 'approved':
@@ -370,7 +385,7 @@ def valider_paiement_final():
 
     except Exception as e:
         print(f"❌ Erreur validation : {str(e)}")
-        return "Une erreur technique est survenue lors de la vérification.", 500  
+        return "Une erreur technique est survenue lors de la vérification.", 500
 # =========================
 # LOGIN ADMIN
 # =========================
