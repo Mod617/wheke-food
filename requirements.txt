@@ -7,7 +7,7 @@ flask-limiter
 flask-mail
 flask-migrate
 flask-wtf
-https://github.com/fedapay/fedapay-python/archive/refs/heads/main.zip
+fedapay==0.3.0
 gevent
 eventlet
 gunicorn

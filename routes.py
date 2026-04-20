@@ -230,7 +230,7 @@ def accueil():
 # =========================
 @app.route("/commander", methods=["POST"])
 def commander():
-    from fedapay import Transaction
+    from fedapay import FedaPay
     
     data = request.get_json()
 
@@ -313,9 +313,9 @@ def commander():
 
     db.session.commit()
 
-    # 🔥 PAIEMENT FEDAPAY
+    # 🔥 PAIEMENT FEDAPAY (SYNTAXE v0.3.0)
     try:
-        transaction = Transaction.create(
+        transaction = FedaPay.create(
             amount=int(total_final),
             currency={'iso': 'XOF'},
             description=f"Commande {commande.tracking_id}",
@@ -327,6 +327,8 @@ def commander():
             },
             callback_url=url_for('valider_paiement_final', tracking_id=commande.tracking_id, _external=True)
         )
+        
+        # Pour la v0.3.0, on utilise generate_token() pour obtenir l'URL
         token = transaction.generate_token()
 
         return jsonify({
@@ -343,7 +345,7 @@ def commander():
     
 @app.route("/valider-paiement-final")
 def valider_paiement_final():
-    from fedapay import Transaction
+    from fedapay import FedaPay
     
     id_transaction = request.args.get('id')
     tracking_id = request.args.get('tracking_id')
@@ -352,14 +354,14 @@ def valider_paiement_final():
         return redirect("/")
 
     try:
-        tr = Transaction.retrieve(id_transaction)
+        # Dans la v0.3.0, on utilise FedaPay.retrieve
+        tr = FedaPay.retrieve(id_transaction)
         
         if tr.status == 'approved':
             commande = models.Commande.query.filter_by(tracking_id=tracking_id).first()
             if commande:
                 commande.statut = "recu"
                 db.session.commit()
-                # Redirection vers la page de succès avec le tracking ID
                 return redirect(f"/suivi.html?id={tracking_id}&status=success")
         
         return "Le paiement n'a pas pu être validé ou a été annulé.", 400

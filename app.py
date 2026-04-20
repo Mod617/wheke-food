@@ -5,8 +5,9 @@ monkey.patch_all()
 from flask import Flask, request, jsonify, render_template, abort, redirect, url_for
 import os
 import uuid
-import fedapay
-from fedapay import Transaction
+
+# --- ADAPTATION FEDAPAY VERSION 0.3.0 ---
+from fedapay import FedaPay
 
 # Importation des extensions
 from extensions import db, login_manager, socketio
@@ -27,13 +28,13 @@ app = Flask(__name__)
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "super_secret_key")
 
-# --- CONFIGURATION FEDAPAY (Format Moderne v1.1+) ---
+# --- CONFIGURATION FEDAPAY (Syntaxe Version 0.3.0) ---
 FEDAPAY_SECRET = os.environ.get("FEDAPAY_SECRET_KEY", "sk_live_METS_TA_CLE_ICI")
 
 try:
-    fedapay.api_key = FEDAPAY_SECRET
-    fedapay.environment = "live"
-    print("✅ FedaPay configuré avec succès")
+    FedaPay.set_api_key(FEDAPAY_SECRET)
+    FedaPay.set_environment("live")
+    print("✅ FedaPay (v0.3.0) configuré avec succès")
 except Exception as e:
     print(f"⚠️ Erreur de configuration FedaPay : {e}")
 # ---------------------------------------------
