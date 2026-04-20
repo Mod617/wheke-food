@@ -232,6 +232,7 @@ def accueil():
 def commander():
     import requests
     import uuid
+    import os
 
     data = request.get_json()
     telephone = data.get("telephone")
@@ -284,10 +285,13 @@ def commander():
     except Exception as e:
         return jsonify({"success": False, "message": "Erreur Base de données"})
 
-    # 3. APPEL DIRECT API FEDAPAY (Court-circuite le SDK)
-    api_key = app.config.get('FEDAPAY_SECRET_KEY')
+    # 3. APPEL DIRECT API FEDAPAY
+    # On vérifie Railway d'abord, puis la config Flask
+    api_key = os.getenv('FEDAPAY_SECRET_KEY') or app.config.get('FEDAPAY_SECRET_KEY')
+    env = os.getenv('FEDAPAY_ENVIRONMENT') or app.config.get('FEDAPAY_ENVIRONMENT', 'sandbox')
+
     base_url = "https://api.fedapay.com/v1"
-    if app.config.get('FEDAPAY_ENVIRONMENT') == "sandbox":
+    if env == "sandbox":
         base_url = "https://sandbox-api.fedapay.com/v1"
 
     headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
@@ -305,14 +309,13 @@ def commander():
     }
 
     try:
-        # Création de la transaction
         req = requests.post(f"{base_url}/transactions", json=payload, headers=headers)
         res = req.json()
         
         if req.status_code not in [200, 201]:
-            return jsonify({"success": False, "message": f"FedaPay API: {res.get('message')}"})
+            # C'est ici que l'erreur d'authentification est captée
+            return jsonify({"success": False, "message": f"FedaPay API: {res.get('message', 'Erreur inconnue')}"})
 
-        # Génération du token de paiement
         trans_id = res['v1/transaction']['id']
         token_req = requests.post(f"{base_url}/transactions/{trans_id}/token", headers=headers)
         token_res = token_req.json()
@@ -323,39 +326,46 @@ def commander():
         })
 
     except Exception as e:
-        return jsonify({"success": False, "message": f"Erreur de connexion FedaPay"})
+        return jsonify({"success": False, "message": "Erreur de connexion FedaPay"})
 
 @app.route("/valider-paiement-final")
 def valider_paiement_final():
     import requests
+    import os
     id_transaction = request.args.get('id')
     tracking_id = request.args.get('tracking_id')
 
     if not id_transaction:
         return redirect("/")
 
-    api_key = app.config.get('FEDAPAY_SECRET_KEY')
+    api_key = os.getenv('FEDAPAY_SECRET_KEY') or app.config.get('FEDAPAY_SECRET_KEY')
+    env = os.getenv('FEDAPAY_ENVIRONMENT') or app.config.get('FEDAPAY_ENVIRONMENT', 'sandbox')
+
     base_url = "https://api.fedapay.com/v1"
-    if app.config.get('FEDAPAY_ENVIRONMENT') == "sandbox":
+    if env == "sandbox":
         base_url = "https://sandbox-api.fedapay.com/v1"
 
     headers = {"Authorization": f"Bearer {api_key}"}
 
     try:
-        # Vérification directe du statut
+        # Vérification manuelle du statut sans utiliser le SDK
         req = requests.get(f"{base_url}/transactions/{id_transaction}", headers=headers)
         res = req.json()
-        status = res['v1/transaction']['status']
+        
+        # Structure de réponse FedaPay : res['v1/transaction']['status']
+        status = res.get('v1/transaction', {}).get('status')
 
         if status == 'approved':
             commande = models.Commande.query.filter_by(tracking_id=tracking_id).first()
             if commande:
                 commande.statut = "recu"
                 db.session.commit()
-                return redirect(f"/suivi.html?id={tracking_id}&status=success")
+                # On redirige vers une page de succès ou le dashboard
+                return redirect(f"/suivi/{tracking_id}?status=success")
         
         return redirect("/")
-    except:
+    except Exception as e:
+        print(f"Erreur validation : {e}")
         return redirect("/")
 # =========================
 # LOGIN ADMIN
