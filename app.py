@@ -5,7 +5,8 @@ monkey.patch_all()
 from flask import Flask, request, jsonify, render_template, abort, redirect, url_for
 import os
 import uuid
-from fedapay import FedaPay, Transaction # <--- Ajoute cette ligne
+import fedapay # <--- MODIFIÉ ICI
+from fedapay import Transaction
 
 # Importation des extensions
 from extensions import db, login_manager, socketio
@@ -23,16 +24,12 @@ app = Flask(__name__)
 # CONFIG
 # =========================
 
-# =========================
-# CONFIG
-# =========================
-
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "super_secret_key")
 
-# --- AJOUT FEDAPAY ICI ---
-FedaPay.set_api_key(os.environ.get("FEDAPAY_SECRET_KEY", "sk_live_METS_TA_CLE_ICI"))
-FedaPay.set_environment("live") 
+# --- AJOUT FEDAPAY CORRIGÉ ---
+fedapay.FedaPay.set_api_key(os.environ.get("FEDAPAY_SECRET_KEY", "sk_live_METS_TA_CLE_ICI"))
+fedapay.FedaPay.set_environment("live") 
 # -------------------------
 
 # DATABASE
@@ -125,9 +122,6 @@ def load_user(user_id):
 @app.route("/contact", methods=["GET"])
 def contact_page():
     return render_template("contact.html")
-
-# Note : La route POST /contact n'est plus nécessaire car 
-# le formulaire utilise maintenant directement l'API WhatsApp.
 
 # Importation des routes principales
 with app.app_context():
