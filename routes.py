@@ -230,20 +230,8 @@ def accueil():
 # =========================
 @app.route("/commander", methods=["POST"])
 def commander():
-    # --- IMPORT DYNAMIQUE (Solution ultime pour Railway) ---
-    import fedapay
-    try:
-        # On essaie d'abord l'accès direct via le module
-        FedaPayTransaction = fedapay.Transaction
-    except AttributeError:
-        # Si échoué, on cherche dans le sous-module interne
-        try:
-            import fedapay.fedapay as fp_internal
-            FedaPayTransaction = fp_internal.Transaction
-        except:
-            return jsonify({"success": False, "message": "Erreur d'initialisation FedaPay"})
-    # -----------------------------------------------------
-
+    from fedapay import Transaction
+    
     data = request.get_json()
 
     telephone = data.get("telephone")
@@ -251,8 +239,6 @@ def commander():
     gps = data.get("gps")
     panier = data.get("panier")
     livraison = data.get("livraison")
-
-    # 🔥 IMPORTANT
     zone = data.get("zone", None)
 
     # ✅ VALIDATION
@@ -268,44 +254,29 @@ def commander():
     for item in panier:
         met_id = item.get("id")
         quantite = int(item.get("qte", 1))
-
         met = models.Met.query.get(met_id)
 
         if not met:
             continue
 
-        if met.promo > 0:
-            prix_reel = met.prix - (met.prix * met.promo / 100)
-        else:
-            prix_reel = met.prix
+        prix_reel = met.prix - (met.prix * met.promo / 100) if met.promo > 0 else met.prix
+        total_plats += round(prix_reel) * quantite
 
-        prix_reel = round(prix_reel)
-        total_plats += prix_reel * quantite
-
-    # 🔥 GESTION LIVRAISON AUTO (CORRIGÉE)
-    prix_livraison = None
-    total_final = None
-
+    # 🔥 GESTION LIVRAISON
+    prix_livraison = 0
     if zone and zone.strip() != "":
         from sqlalchemy import func
-        # ✅ CORRECTION ICI (égalité exacte)
         zone_db = models.Zone.query.filter(
             func.lower(models.Zone.nom) == zone.strip().lower()
         ).first()
-
-        print("ZONE REÇUE :", zone)
-        print("ZONE TROUVÉE :", zone_db.nom if zone_db else "AUCUNE")
 
         if zone_db:
             if livraison == "standard":
                 prix_livraison = zone_db.prix_standard
             elif livraison == "express":
                 prix_livraison = zone_db.prix_express
-
-            if prix_livraison is not None:
-                total_final = total_plats + prix_livraison
-            else:
-                total_final = total_plats
+    
+    total_final = total_plats + prix_livraison
 
     # ✅ CREATION COMMANDE
     commande = models.Commande(
@@ -329,26 +300,22 @@ def commander():
         quantite = int(item.get("qte", 1))
         met = models.Met.query.get(met_id)
 
-        if not met:
-            continue
-
-        prix_it = met.prix - (met.prix * met.promo / 100) if met.promo > 0 else met.prix
-        prix_reel = round(prix_it)
-
-        ligne = models.CommandeItem(
-            commande_id=commande.id,
-            met_nom=met.nom,
-            prix=prix_reel,
-            quantite=quantite,
-            image=met.media
-        )
-        db.session.add(ligne)
+        if met:
+            prix_it = met.prix - (met.prix * met.promo / 100) if met.promo > 0 else met.prix
+            ligne = models.CommandeItem(
+                commande_id=commande.id,
+                met_nom=met.nom,
+                prix=round(prix_it),
+                quantite=quantite,
+                image=met.media
+            )
+            db.session.add(ligne)
 
     db.session.commit()
 
-    # 🔥 AJOUT FEDAPAY
+    # 🔥 PAIEMENT FEDAPAY
     try:
-        transaction = FedaPayTransaction.create(
+        transaction = Transaction.create(
             amount=int(total_final),
             currency={'iso': 'XOF'},
             description=f"Commande {commande.tracking_id}",
@@ -368,23 +335,15 @@ def commander():
         })
 
     except Exception as e:
-        print(f"Erreur FedaPay : {str(e)}")
+        print(f"❌ Erreur FedaPay : {str(e)}")
         return jsonify({
-            "success": False,
+            "success": False, 
             "message": "Erreur lors de la création du paiement"
         })
-
-        
+    
 @app.route("/valider-paiement-final")
 def valider_paiement_final():
-    # --- IMPORT DYNAMIQUE ---
-    import fedapay
-    try:
-        FedaPayTransaction = fedapay.Transaction
-    except AttributeError:
-        import fedapay.fedapay as fp_internal
-        FedaPayTransaction = fp_internal.Transaction
-    # -----------------------
+    from fedapay import Transaction
     
     id_transaction = request.args.get('id')
     tracking_id = request.args.get('tracking_id')
@@ -393,20 +352,21 @@ def valider_paiement_final():
         return redirect("/")
 
     try:
-        tr = FedaPayTransaction.retrieve(id_transaction)
+        tr = Transaction.retrieve(id_transaction)
         
         if tr.status == 'approved':
             commande = models.Commande.query.filter_by(tracking_id=tracking_id).first()
             if commande:
                 commande.statut = "recu"
                 db.session.commit()
+                # Redirection vers la page de succès avec le tracking ID
                 return redirect(f"/suivi.html?id={tracking_id}&status=success")
         
-        return "Le paiement n'a pas pu être validé.", 400
+        return "Le paiement n'a pas pu être validé ou a été annulé.", 400
 
     except Exception as e:
-        print(f"Erreur validation : {str(e)}")
-        return "Une erreur technique est survenue.", 500
+        print(f"❌ Erreur validation : {str(e)}")
+        return "Une erreur technique est survenue lors de la vérification.", 500    
 # =========================
 # LOGIN ADMIN
 # =========================
