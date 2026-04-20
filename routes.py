@@ -230,27 +230,8 @@ def accueil():
 # =========================
 @app.route("/commander", methods=["POST"])
 def commander():
-    import fedapay
-    
-    # --- DÉTECTION DYNAMIQUE DE TRANSACTION (Correction Import) ---
-    Transaction = getattr(fedapay, 'Transaction', None)
-    if not Transaction:
-        # Secours pour les structures imbriquées v0.3.0+
-        for attr in dir(fedapay):
-            if attr.lower() == 'transaction':
-                Transaction = getattr(fedapay, attr)
-                break
-    
-    # Si toujours introuvable par attribut, on tente les imports internes connus
-    if not Transaction:
-        try:
-            from fedapay.fedapay import Transaction
-        except ImportError:
-            try:
-                from fedapay.models import Transaction
-            except ImportError:
-                return jsonify({"success": False, "message": "SDK FedaPay : Classe Transaction introuvable"})
-    # -------------------------------------------------------------
+    import requests
+    import uuid
 
     data = request.get_json()
     telephone = data.get("telephone")
@@ -263,6 +244,7 @@ def commander():
     if not telephone or not panier:
         return jsonify({"success": False, "message": "Téléphone ou panier vide"})
 
+    # 1. CALCUL DU TOTAL
     total_plats = 0
     for item in panier:
         met = models.Met.query.get(item.get("id"))
@@ -278,79 +260,100 @@ def commander():
             prix_livraison = z_db.prix_standard if livraison == "standard" else z_db.prix_express
     
     total_final = total_plats + prix_livraison
-
-    import uuid
     track_id = str(uuid.uuid4())[:8].upper() 
 
+    # 2. ENREGISTREMENT EN BASE DE DONNÉES
     try:
         commande = models.Commande(
-            telephone=telephone,
-            adresse=adresse,
-            gps=gps,
-            type_livraison=livraison,
-            statut="attente_paiement",
-            tracking_id=track_id,
-            prix_livraison=prix_livraison,
-            total=total_final
+            telephone=telephone, adresse=adresse, gps=gps,
+            type_livraison=livraison, statut="attente_paiement",
+            tracking_id=track_id, prix_livraison=prix_livraison, total=total_final
         )
         db.session.add(commande)
         db.session.commit()
+
+        for item in panier:
+            met = models.Met.query.get(item.get("id"))
+            if met:
+                p = round(met.prix - (met.prix * met.promo / 100) if met.promo > 0 else met.prix)
+                db.session.add(models.CommandeItem(
+                    commande_id=commande.id, met_nom=met.nom,
+                    prix=p, quantite=int(item.get("qte", 1)), image=met.media
+                ))
+        db.session.commit()
     except Exception as e:
-        print(f"❌ Erreur Base de données : {str(e)}")
-        return jsonify({"success": False, "message": "Erreur lors de l'enregistrement de la commande"})
+        return jsonify({"success": False, "message": "Erreur Base de données"})
 
-    for item in panier:
-        met = models.Met.query.get(item.get("id"))
-        if met:
-            p = round(met.prix - (met.prix * met.promo / 100) if met.promo > 0 else met.prix)
-            db.session.add(models.CommandeItem(
-                commande_id=commande.id, 
-                met_nom=met.nom,
-                prix=p, 
-                quantite=int(item.get("qte", 1)), 
-                image=met.media
-            ))
-    db.session.commit()
+    # 3. APPEL DIRECT API FEDAPAY (Court-circuite le SDK)
+    api_key = app.config.get('FEDAPAY_SECRET_KEY')
+    base_url = "https://api.fedapay.com/v1"
+    if app.config.get('FEDAPAY_ENVIRONMENT') == "sandbox":
+        base_url = "https://sandbox-api.fedapay.com/v1"
 
-    # 🔥 PAIEMENT FEDAPAY
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+    
+    payload = {
+        "amount": int(total_final),
+        "currency": {"iso": "XOF"},
+        "description": f"Commande {track_id}",
+        "customer": {
+            "firstname": "Client", "lastname": telephone,
+            "email": "paiement@whekefood.com",
+            "phone_number": {"number": telephone, "country": "bj"}
+        },
+        "callback_url": url_for('valider_paiement_final', tracking_id=track_id, _external=True)
+    }
+
     try:
-        transaction = Transaction.create(
-            amount=int(total_final),
-            currency={'iso': 'XOF'},
-            description=f"Commande {track_id}",
-            customer={
-                'firstname': 'Client',
-                'lastname': telephone,
-                'email': 'paiement@whekefood.com',
-                'phone_number': {'number': telephone, 'country': 'bj'}
-            },
-            callback_url=url_for('valider_paiement_final', tracking_id=track_id, _external=True)
-        )
-        token = transaction.generate_token()
-        return jsonify({"success": True, "redirect_url": token.url})
+        # Création de la transaction
+        req = requests.post(f"{base_url}/transactions", json=payload, headers=headers)
+        res = req.json()
+        
+        if req.status_code not in [200, 201]:
+            return jsonify({"success": False, "message": f"FedaPay API: {res.get('message')}"})
+
+        # Génération du token de paiement
+        trans_id = res['v1/transaction']['id']
+        token_req = requests.post(f"{base_url}/transactions/{trans_id}/token", headers=headers)
+        token_res = token_req.json()
+
+        return jsonify({
+            "success": True, 
+            "redirect_url": token_res['v1/token']['url']
+        })
+
     except Exception as e:
-        print(f"❌ Erreur FedaPay : {str(e)}")
-        return jsonify({"success": False, "message": f"Erreur FedaPay : {str(e)}"})
+        return jsonify({"success": False, "message": f"Erreur de connexion FedaPay"})
 
 @app.route("/valider-paiement-final")
 def valider_paiement_final():
-    import fedapay
-    try:
-        from fedapay import Transaction
-    except ImportError:
-        from fedapay.fedapay import Transaction
-        
+    import requests
     id_transaction = request.args.get('id')
     tracking_id = request.args.get('tracking_id')
 
+    if not id_transaction:
+        return redirect("/")
+
+    api_key = app.config.get('FEDAPAY_SECRET_KEY')
+    base_url = "https://api.fedapay.com/v1"
+    if app.config.get('FEDAPAY_ENVIRONMENT') == "sandbox":
+        base_url = "https://sandbox-api.fedapay.com/v1"
+
+    headers = {"Authorization": f"Bearer {api_key}"}
+
     try:
-        tr = Transaction.retrieve(id_transaction)
-        if tr.status == 'approved':
+        # Vérification directe du statut
+        req = requests.get(f"{base_url}/transactions/{id_transaction}", headers=headers)
+        res = req.json()
+        status = res['v1/transaction']['status']
+
+        if status == 'approved':
             commande = models.Commande.query.filter_by(tracking_id=tracking_id).first()
             if commande:
                 commande.statut = "recu"
                 db.session.commit()
                 return redirect(f"/suivi.html?id={tracking_id}&status=success")
+        
         return redirect("/")
     except:
         return redirect("/")
