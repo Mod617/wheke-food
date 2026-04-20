@@ -6,8 +6,14 @@ from flask import Flask, request, jsonify, render_template, abort, redirect, url
 import os
 import uuid
 
-# --- ADAPTATION FEDAPAY VERSION 0.3.0 ---
-from fedapay import FedaPay
+# --- ADAPTATION FEDAPAY VERSION 0.3.0 (CORRIGÉE) ---
+try:
+    # On tente l'import profond requis par la v0.3.0
+    from fedapay.fedapay import FedaPay
+except ImportError:
+    # Au cas où l'installation structure différemment
+    import fedapay
+    FedaPay = fedapay.FedaPay
 
 # Importation des extensions
 from extensions import db, login_manager, socketio
@@ -28,7 +34,7 @@ app = Flask(__name__)
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "super_secret_key")
 
-# --- CONFIGURATION FEDAPAY (Syntaxe Version 0.3.0) ---
+# --- CONFIGURATION FEDAPAY ---
 FEDAPAY_SECRET = os.environ.get("FEDAPAY_SECRET_KEY", "sk_live_METS_TA_CLE_ICI")
 
 try:
@@ -81,7 +87,7 @@ def block_bad_bots():
         abort(403)
 
 # =========================
-# 🔥 SOCKET.IO (CORRIGÉ POUR 502)
+# 🔥 SOCKET.IO
 # =========================
 
 if os.environ.get("RAILWAY_STATIC_URL") or os.environ.get("PORT"):

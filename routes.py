@@ -230,7 +230,7 @@ def accueil():
 # =========================
 @app.route("/commander", methods=["POST"])
 def commander():
-    from fedapay import FedaPay
+    from fedapay.fedapay import FedaPay
     
     data = request.get_json()
 
@@ -345,7 +345,7 @@ def commander():
     
 @app.route("/valider-paiement-final")
 def valider_paiement_final():
-    from fedapay import FedaPay
+    from fedapay.fedapay import FedaPay
     
     id_transaction = request.args.get('id')
     tracking_id = request.args.get('tracking_id')
