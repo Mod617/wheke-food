@@ -215,7 +215,11 @@ class Message(db.Model):
     id = db.Column(db.Integer, primary_key=True)
 
     tracking = db.Column(db.String(20), nullable=False)
-    sender = db.Column(db.String(20), nullable=False)  # "client" ou "livreur"
+
+    # 🔥 AJOUT CRUCIAL
+    livraison_id = db.Column(db.Integer, db.ForeignKey("livraison.id"))
+
+    sender = db.Column(db.String(20), nullable=False)  # client / livreur
     message = db.Column(db.Text, nullable=False)
 
-    date = db.Column(db.DateTime, default=datetime.utcnow)    
+    date = db.Column(db.DateTime, default=datetime.utcnow)

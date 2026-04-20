@@ -679,3 +679,8 @@ window.onscroll = function() {
         }
     }
 };
+
+// Exécuter au chargement de la page
+document.addEventListener("DOMContentLoaded", () => {
+    afficherPanier();
+});
