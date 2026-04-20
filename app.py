@@ -5,13 +5,12 @@ monkey.patch_all()
 from flask import Flask, request, jsonify, render_template, abort, redirect, url_for
 import os
 import uuid
-import fedapay # <--- MODIFIÉ ICI
-from fedapay import Transaction
+import fedapay # <--- Importation propre pour éviter l'ImportError
 
 # Importation des extensions
 from extensions import db, login_manager, socketio
 
-# On retire Flask-Mail car Railway bloque les ports SMTP
+# Configuration de base
 from werkzeug.utils import secure_filename
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -21,16 +20,16 @@ print("🚀 APPLICATION WHÈKÈ FOOD DÉMARRE")
 app = Flask(__name__)
 
 # =========================
-# CONFIG
+# CONFIGURATION
 # =========================
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "super_secret_key")
 
-# --- AJOUT FEDAPAY CORRIGÉ ---
+# --- CONFIGURATION FEDAPAY (Format stable) ---
 fedapay.FedaPay.set_api_key(os.environ.get("FEDAPAY_SECRET_KEY", "sk_live_METS_TA_CLE_ICI"))
 fedapay.FedaPay.set_environment("live") 
-# -------------------------
+# ---------------------------------------------
 
 # DATABASE
 db_url = os.environ.get("DATABASE_URL")

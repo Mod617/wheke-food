@@ -230,6 +230,7 @@ def accueil():
 # =========================
 @app.route("/commander", methods=["POST"])
 def commander():
+    import fedapay
     data = request.get_json()
 
     telephone = data.get("telephone")
@@ -301,13 +302,13 @@ def commander():
             else:
                 total_final = total_plats
 
-    # ✅ CREATION COMMANDE (On garde tout, mais on met le statut en attente)
+    # ✅ CREATION COMMANDE
     commande = models.Commande(
         telephone=telephone,
         adresse=adresse,
         gps=gps,
         type_livraison=livraison,
-        statut="attente_paiement", # On change juste le statut ici
+        statut="attente_paiement",
         tracking_id=generer_tracking(),
         prix_livraison=prix_livraison,
         total=total_final,
@@ -326,12 +327,8 @@ def commander():
         if not met:
             continue
 
-        if met.promo > 0:
-            prix_reel = met.prix - (met.prix * met.promo / 100)
-        else:
-            prix_reel = met.prix
-
-        prix_reel = round(prix_reel)
+        prix_it = met.prix - (met.prix * met.promo / 100) if met.promo > 0 else met.prix
+        prix_reel = round(prix_it)
 
         ligne = models.CommandeItem(
             commande_id=commande.id,
@@ -344,10 +341,9 @@ def commander():
 
     db.session.commit()
 
-    # 🔥 AJOUT FEDAPAY : Création du lien de paiement avant de répondre au JS
+    # 🔥 AJOUT FEDAPAY
     try:
-        from fedapay import Transaction
-        transaction = Transaction.create(
+        transaction = fedapay.Transaction.create(
             amount=int(total_final),
             currency={'iso': 'XOF'},
             description=f"Commande {commande.tracking_id}",
@@ -363,47 +359,42 @@ def commander():
 
         return jsonify({
             "success": True,
-            "redirect_url": token.url # On envoie l'URL FedaPay au lieu de juste le succès
+            "redirect_url": token.url
         })
 
     except Exception as e:
+        print(f"Erreur FedaPay : {str(e)}")
         return jsonify({
             "success": False,
-            "message": "Erreur FedaPay: " + str(e)
+            "message": "Erreur lors de la création du paiement"
         })
 
         
 @app.route("/valider-paiement-final")
 def valider_paiement_final():
-    from fedapay import Transaction
+    import fedapay
     
-    # 1. On récupère les infos envoyées par FedaPay dans l'URL
     id_transaction = request.args.get('id')
     tracking_id = request.args.get('tracking_id')
 
     if not id_transaction or not tracking_id:
-        return redirect(url_for('page_commande'))
+        return redirect("/")
 
     try:
-        # 2. On demande à FedaPay le statut réel de cette transaction
-        tr = Transaction.retrieve(id_transaction)
+        tr = fedapay.Transaction.retrieve(id_transaction)
         
         if tr.status == 'approved':
-            # 3. Le paiement est bon ! On cherche la commande et on la valide
             commande = models.Commande.query.filter_by(tracking_id=tracking_id).first()
             if commande:
-                commande.statut = "recu" # Elle passe enfin en 'recu' pour la cuisine
+                commande.statut = "recu"
                 db.session.commit()
-                
-                # 4. On redirige vers ta page de suivi
                 return redirect(f"/suivi.html?id={tracking_id}&status=success")
         
-        # Si ce n'est pas approuvé
-        return "Le paiement n'a pas pu être validé. Veuillez contacter le support.", 400
+        return "Le paiement n'a pas pu être validé.", 400
 
     except Exception as e:
         print(f"Erreur validation : {str(e)}")
-        return "Une erreur technique est survenue.", 500        
+        return "Une erreur technique est survenue.", 500      
 # =========================
 # LOGIN ADMIN
 # =========================
