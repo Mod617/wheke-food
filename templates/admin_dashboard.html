@@ -362,18 +362,18 @@
                         {% endif %}
                     </td>
                     <td>
-                        {% if c.prix_livraison is not none %}
-                            {{ c.prix_livraison }} F
-                        {% else %}
+                        {% if c.prix_livraison == 0 or c.statut == 'attente_prix' %}
                             <form method="POST" action="/admin/set_prix/{{ c.id }}" class="inline-form">
-                                <input type="number" name="prix" placeholder="Prix" style="width:60px;" required>
-                                <button type="submit">OK</button>
+                                <input type="number" name="prix" placeholder="Prix" style="width:60px; padding: 5px; border: 1px solid #ff6600; border-radius: 4px;" required>
+                                <button type="submit" style="background: #ff6600; color: white; border: none; padding: 5px 8px; border-radius: 4px; cursor: pointer;">OK</button>
                             </form>
+                        {% else %}
+                            <span style="font-weight: bold; color: #2ecc71;">{{ c.prix_livraison }} F</span>
                         {% endif %}
                     </td>
                     <td><b>{{ c.total if c.total else '--' }} F</b></td>
                     <td>
-                        {% if c.prix_livraison is not none %}
+                        {% if c.statut != 'attente_prix' %}
                             {% if c.livreur %}
                                 <b style="color:green;">🚴 {{ c.livreur.nom }}</b>
                             {% else %}
@@ -388,6 +388,8 @@
                                     <button type="submit">OK</button>
                                 </form>
                             {% endif %}
+                        {% else %}
+                            <i style="color: #999; font-size: 11px;">En attente du prix...</i>
                         {% endif %}
                     </td>
                     <td>{{ c.statut }}</td>
