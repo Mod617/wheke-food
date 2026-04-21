@@ -233,97 +233,136 @@ def commander():
     import requests
     import uuid
     import os
+    from datetime import datetime
+    
+    # Import sécurisé de socketio
     try:
         from app import socketio
-    except:
+    except ImportError:
+        socketio = None
+    except Exception as e:
+        print(f"DEBUG: Erreur import socketio: {e}")
         socketio = None
 
-    data = request.get_json()
-    telephone = data.get("telephone")
-    adresse_manuelle = data.get("adresse", "").strip()
-    gps = data.get("gps", "").strip()
-    zone_nom = data.get("zone", "").strip()
-    panier = data.get("panier", [])
-    livraison = data.get("livraison", "standard")
-
-    # 🔥 FORCE LA LOCALISATION : Il faut au moins une des trois infos
-    if not (adresse_manuelle or gps or zone_nom):
-        return jsonify({
-            "success": False, 
-            "message": "Veuillez préciser votre quartier ou partager votre position GPS."
-        })
-
-    if not telephone or not panier:
-        return jsonify({"success": False, "message": "Téléphone ou panier vide"})
-
-    # 1. CALCUL DU TOTAL DES PLATS
-    total_plats = 0
-    for item in panier:
-        met = models.Met.query.get(item.get("id"))
-        if met:
-            prix_reel = met.prix - (met.prix * met.promo / 100) if met.promo > 0 else met.prix
-            total_plats += round(prix_reel) * int(item.get("qte", 1))
-
-    # 2. GESTION DE LA LIVRAISON
-    prix_livraison = None
-    zone_identifiee = False
-
-    if zone_nom:
-        from sqlalchemy import func
-        z_db = models.Zone.query.filter(func.lower(models.Zone.nom) == zone_nom.lower()).first()
-        if z_db:
-            prix_livraison = z_db.prix_standard if livraison == "standard" else z_db.prix_express
-            zone_identifiee = True
-
-    # 3. ENREGISTREMENT DB
     try:
-        nouveau_statut = "attente_paiement" if zone_identifiee else "attente_prix"
-        total_final = total_plats + (prix_livraison if prix_livraison else 0)
-        
-        # On construit l'adresse finale proprement
-        # Priorité au GPS, sinon adresse manuelle, sinon quartier choisi
-        localisation_finale = gps if gps else (adresse_manuelle if adresse_manuelle else zone_nom)
+        data = request.get_json()
+        if not data:
+            return jsonify({"success": False, "message": "Données JSON manquantes"}), 400
 
-        commande = models.Commande(
-            telephone=telephone, 
-            adresse=localisation_finale, 
-            gps=gps,
-            type_livraison=livraison, 
-            statut=nouveau_statut,
-            prix_livraison=prix_livraison,
-            total=total_final,
-            zone=zone_nom
-        )
-        
-        db.session.add(commande)
-        db.session.commit()
+        telephone = data.get("telephone")
+        adresse_client = data.get("adresse") or data.get("zone") or "Adresse non précisée"
+        gps = data.get("gps", "")
+        panier = data.get("panier", [])
+        livraison = data.get("livraison", "standard")
+        zone_nom = data.get("zone", "")
 
+        if not telephone or not panier:
+            return jsonify({"success": False, "message": "Téléphone ou panier vide"})
+
+        # 1. CALCUL DU TOTAL DES PLATS
+        total_plats = 0
         for item in panier:
             met = models.Met.query.get(item.get("id"))
             if met:
-                p = round(met.prix - (met.prix * met.promo / 100) if met.promo > 0 else met.prix)
-                db.session.add(models.CommandeItem(
-                    commande_id=commande.id, met_nom=met.nom,
-                    prix=p, quantite=int(item.get("qte", 1)), image=met.media
-                ))
-        db.session.commit()
+                prix_reel = met.prix - (met.prix * met.promo / 100) if met.promo > 0 else met.prix
+                total_plats += round(prix_reel) * int(item.get("qte", 1))
 
-        if socketio:
-            socketio.emit("nouvelle_commande", {"tracking_id": commande.tracking_id})
+        # 2. GESTION DE LA LIVRAISON
+        prix_livraison = 0
+        zone_identifiee = False
 
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"success": False, "message": "Erreur lors de l'enregistrement"})
+        if zone_nom:
+            from sqlalchemy import func
+            z_db = models.Zone.query.filter(func.lower(models.Zone.nom) == zone_nom.strip().lower()).first()
+            if z_db:
+                prix_livraison = z_db.prix_standard if livraison == "standard" else z_db.prix_express
+                zone_identifiee = True
 
-    # 4. PAIEMENT & REDIRECTION
-    if zone_identifiee:
-        # ... (Logique FedaPay identique au code précédent) ...
-        pass 
+        total_final = total_plats + prix_livraison
 
-    return jsonify({
-        "success": True, 
-        "redirect_url": url_for('suivi_commande', tracking_id=commande.tracking_id)
-    })
+        # 3. ENREGISTREMENT DB (Bloc critique)
+        try:
+            nouveau_statut = "attente_paiement" if zone_identifiee else "attente_prix"
+            
+            commande = models.Commande(
+                telephone=telephone, 
+                adresse=adresse_client, 
+                gps=gps,
+                type_livraison=livraison, 
+                statut=nouveau_statut,
+                prix_livraison=prix_livraison,
+                total=total_final,
+                zone=zone_nom
+            )
+            
+            db.session.add(commande)
+            db.session.flush() # Récupère l'ID
+
+            for item in panier:
+                met = models.Met.query.get(item.get("id"))
+                if met:
+                    p = round(met.prix - (met.prix * met.promo / 100) if met.promo > 0 else met.prix)
+                    db.session.add(models.CommandeItem(
+                        commande_id=commande.id, 
+                        met_nom=met.nom,
+                        prix=p, 
+                        quantite=int(item.get("qte", 1)), 
+                        image=met.media
+                    ))
+            
+            db.session.commit()
+            print(f"DEBUG: Commande {commande.tracking_id} enregistrée avec succès")
+
+            # Alerte SocketIO
+            if socketio:
+                try:
+                    socketio.emit("nouvelle_commande", {"tracking_id": commande.tracking_id})
+                except:
+                    pass
+
+        except Exception as db_err:
+            db.session.rollback()
+            print(f"CRITIQUE: Erreur Base de données: {db_err}")
+            return jsonify({"success": False, "message": f"Erreur DB: {str(db_err)[:50]}"}), 500
+
+        # 4. FEDAPAY (On le met dans un try/except pour ne pas bloquer la commande)
+        redirect_url = url_for('suivi_commande', tracking_id=commande.tracking_id)
+        
+        if zone_identifiee:
+            try:
+                api_key = os.getenv('FEDAPAY_SECRET_KEY')
+                if api_key:
+                    base_url = "https://api.fedapay.com/v1" if "live" in api_key else "https://sandbox-api.fedapay.com/v1"
+                    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+                    
+                    payload = {
+                        "amount": int(total_final),
+                        "currency": {"iso": "XOF"},
+                        "description": f"Commande {commande.tracking_id}",
+                        "customer": {
+                            "firstname": "Client", "lastname": "Bénin",
+                            "email": "whekefood@gmail.com",
+                            "phone_number": {"number": telephone, "country": "bj"}
+                        },
+                        "callback_url": url_for('valider_paiement_final', tracking_id=commande.tracking_id, _external=True, _scheme='https')
+                    }
+                    req = requests.post(f"{base_url}/transactions", json=payload, headers=headers, timeout=5)
+                    res = req.json()
+                    trans_id = res.get('v1/transaction', {}).get('id') or res.get('id')
+
+                    if trans_id:
+                        token_req = requests.post(f"{base_url}/transactions/{trans_id}/token", json={}, headers=headers, timeout=5)
+                        t_url = token_req.json().get('v1/token', {}).get('url') or token_req.json().get('url')
+                        if t_url:
+                            redirect_url = t_url
+            except Exception as feda_err:
+                print(f"DEBUG: Erreur FedaPay (non bloquante): {feda_err}")
+
+        return jsonify({"success": True, "redirect_url": redirect_url})
+
+    except Exception as general_err:
+        print(f"CRITIQUE: Erreur générale route commander: {general_err}")
+        return jsonify({"success": False, "message": "Erreur interne du serveur"}), 500
 
 
 @app.route("/api/relancer-paiement", methods=["POST"])
