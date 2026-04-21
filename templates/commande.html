@@ -204,7 +204,7 @@ background: #f8f8f8;
 
 <div id="boxPrix"></div>
 
-<button class="btn" onclick="envoyerCommande()">✅ Commander</button>
+<button class="btn" onclick="envoyerCommande(event)">✅ Commander</button>
 
 </div>
 
@@ -230,7 +230,7 @@ box.classList.toggle("show");
 // fermer si clic dehors
 document.addEventListener("click", function(e){
 let dropdown = document.querySelector(".dropdown");
-if(!dropdown && !dropdown.contains(e.target)){
+if(dropdown && !dropdown.contains(e.target)){
 document.getElementById("dropdownContent").classList.remove("show");
 }
 });
@@ -356,56 +356,52 @@ box.innerHTML = html;
 afficherPanierCommande();
 
 // ENVOI
-function envoyerCommande(event) { // Ajout de event ici
-    // Empêcher le comportement par défaut si c'est un bouton de formulaire
+function envoyerCommande(event) {
+    // 1. Sécurité : empêcher le comportement par défaut
     if(event) event.preventDefault();
 
+    // 2. Récupération des données
     let tel = document.getElementById("telephone").value.trim();
-    let qSelect = typeof selectedQuartier !== 'undefined' ? selectedQuartier : "";
+    let qSelect = selectedQuartier || "";
     let qLibre = document.getElementById("quartierLibre").value.trim();
-    let gpsLocation = typeof gps !== 'undefined' ? gps : ""; // Sécurité si GPS n'est pas défini
+    let gpsLocation = gps || ""; 
 
-    // 🔥 Détermination du quartier (Priorité au texte libre, sinon sélection)
     let quartier = qLibre || qSelect;
     let livraison = document.getElementById("livraison").value;
 
-    // --- VALIDATIONS STRICTES ---
+    // 3. Validations
     if(!tel) return alert("📞 Numéro de téléphone requis");
     if(!livraison) return alert("🚚 Veuillez choisir un type de livraison");
-    
-    // On force soit le quartier (liste ou écrit), soit le GPS
     if(!quartier && !gpsLocation) {
-        return alert("📍 Précisez votre quartier ou partagez votre position GPS pour la livraison.");
+        return alert("📍 Précisez votre quartier ou partagez votre position GPS.");
     }
 
     let panier = JSON.parse(localStorage.getItem("panier") || "[]");
     if(panier.length === 0) return alert("🛒 Votre panier est vide");
 
-    // --- ANIMATION DU BOUTON ---
-    const btn = event.target;
+    // 4. Animation du bouton (On vérifie si event.target existe)
+    const btn = (event && event.target) ? event.target : document.querySelector(".btn:last-child");
     const texteOriginal = btn.innerText;
     btn.disabled = true;
     btn.innerText = "⏳ Traitement en cours...";
 
-    // --- ENVOI AU SERVEUR ---
+    // 5. Envoi
     fetch("/commander", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
             telephone: tel,
-            adresse: quartier, // Sera utilisé pour la colonne 'adresse'
+            adresse: quartier || "Position GPS",
             gps: gpsLocation,
             livraison: livraison,
-            zone: quartier,    // Utilisé pour la recherche de prix automatique
-            panier: panier.map(p => ({ id: p.id, qte: p.quantite }))
+            zone: quartier,
+            panier: panier.map(p => ({ id: p.id, qte: p.quantite || p.qte || 1 }))
         })
     })
     .then(r => r.json())
     .then(r => {
         if(r.success && r.redirect_url){
-            // ✅ VIDER LE PANIER
             localStorage.removeItem("panier");
-            // 🔥 REDIRECTION (Vers FedaPay ou vers Suivi selon le cas)
             window.location.href = r.redirect_url;
         } else {
             alert("❌ " + (r.message || "Vérifiez vos informations"));
@@ -415,7 +411,7 @@ function envoyerCommande(event) { // Ajout de event ici
     })
     .catch(err => {
         console.error(err);
-        alert("❌ Erreur de connexion : vérifiez votre connexion internet.");
+        alert("❌ Erreur de connexion au serveur");
         btn.disabled = false;
         btn.innerText = texteOriginal;
     });
