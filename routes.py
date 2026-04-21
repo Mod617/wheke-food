@@ -280,7 +280,7 @@ def commander():
 
         total_final = total_plats + prix_livraison
 
-        # 3. ENREGISTREMENT DB (Bloc critique)
+        # 3. ENREGISTREMENT DB
         try:
             nouveau_statut = "attente_paiement" if zone_identifiee else "attente_prix"
             
@@ -296,7 +296,7 @@ def commander():
             )
             
             db.session.add(commande)
-            db.session.flush() # Récupère l'ID
+            db.session.flush() # Récupère l'ID pour les items
 
             for item in panier:
                 met = models.Met.query.get(item.get("id"))
@@ -323,10 +323,15 @@ def commander():
         except Exception as db_err:
             db.session.rollback()
             print(f"CRITIQUE: Erreur Base de données: {db_err}")
-            return jsonify({"success": False, "message": f"Erreur DB: {str(db_err)[:50]}"}), 500
+            return jsonify({"success": False, "message": "Erreur lors de l'enregistrement"}), 500
 
-        # 4. FEDAPAY (On le met dans un try/except pour ne pas bloquer la commande)
-        redirect_url = url_for('suivi_commande', tracking_id=commande.tracking_id)
+        # 4. REDIRECTION & FEDAPAY
+        # Utilisation de 'api_suivi' et 'tracking_id' pour correspondre à ta route
+        try:
+            redirect_url = url_for('api_suivi', tracking_id=commande.tracking_id)
+        except Exception as url_err:
+            print(f"DEBUG: url_for échoué, fallback manuel: {url_err}")
+            redirect_url = f"/api/suivi/{commande.tracking_id}"
         
         if zone_identifiee:
             try:
@@ -344,15 +349,16 @@ def commander():
                             "email": "whekefood@gmail.com",
                             "phone_number": {"number": telephone, "country": "bj"}
                         },
-                        "callback_url": url_for('valider_paiement_final', tracking_id=commande.tracking_id, _external=True, _scheme='https')
+                        "callback_url": url_for('api_suivi', tracking_id=commande.tracking_id, _external=True, _scheme='https')
                     }
-                    req = requests.post(f"{base_url}/transactions", json=payload, headers=headers, timeout=5)
+                    req = requests.post(f"{base_url}/transactions", json=payload, headers=headers, timeout=10)
                     res = req.json()
                     trans_id = res.get('v1/transaction', {}).get('id') or res.get('id')
 
                     if trans_id:
-                        token_req = requests.post(f"{base_url}/transactions/{trans_id}/token", json={}, headers=headers, timeout=5)
-                        t_url = token_req.json().get('v1/token', {}).get('url') or token_req.json().get('url')
+                        token_req = requests.post(f"{base_url}/transactions/{trans_id}/token", json={}, headers=headers, timeout=10)
+                        t_data = token_req.json()
+                        t_url = t_data.get('v1/token', {}).get('url') or t_data.get('url')
                         if t_url:
                             redirect_url = t_url
             except Exception as feda_err:
