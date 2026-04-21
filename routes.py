@@ -296,7 +296,7 @@ def commander():
             )
             
             db.session.add(commande)
-            db.session.flush() # Récupère l'ID pour les items
+            db.session.flush()
 
             for item in panier:
                 met = models.Met.query.get(item.get("id"))
@@ -313,7 +313,6 @@ def commander():
             db.session.commit()
             print(f"DEBUG: Commande {commande.tracking_id} enregistrée avec succès")
 
-            # Alerte SocketIO
             if socketio:
                 try:
                     socketio.emit("nouvelle_commande", {"tracking_id": commande.tracking_id})
@@ -325,13 +324,13 @@ def commander():
             print(f"CRITIQUE: Erreur Base de données: {db_err}")
             return jsonify({"success": False, "message": "Erreur lors de l'enregistrement"}), 500
 
-        # 4. REDIRECTION & FEDAPAY
-        # Utilisation de 'api_suivi' et 'tracking_id' pour correspondre à ta route
+        # 4. REDIRECTION VERS LA PAGE HTML DE SUIVI
         try:
-            redirect_url = url_for('api_suivi', tracking_id=commande.tracking_id)
+            # On utilise 'suivi_commande' et le paramètre 'tracking'
+            redirect_url = url_for('suivi_commande', tracking=commande.tracking_id)
         except Exception as url_err:
             print(f"DEBUG: url_for échoué, fallback manuel: {url_err}")
-            redirect_url = f"/api/suivi/{commande.tracking_id}"
+            redirect_url = f"/suivi/{commande.tracking_id}"
         
         if zone_identifiee:
             try:
@@ -349,7 +348,8 @@ def commander():
                             "email": "whekefood@gmail.com",
                             "phone_number": {"number": telephone, "country": "bj"}
                         },
-                        "callback_url": url_for('api_suivi', tracking_id=commande.tracking_id, _external=True, _scheme='https')
+                        # Redirection après paiement vers le suivi HTML
+                        "callback_url": url_for('suivi_commande', tracking=commande.tracking_id, _external=True, _scheme='https')
                     }
                     req = requests.post(f"{base_url}/transactions", json=payload, headers=headers, timeout=10)
                     res = req.json()
