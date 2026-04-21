@@ -356,58 +356,68 @@ box.innerHTML = html;
 afficherPanierCommande();
 
 // ENVOI
-function envoyerCommande(){
-    let tel = document.getElementById("telephone").value.trim();
-    let qSelect = selectedQuartier;
-    let qLibre = document.getElementById("quartierLibre").value.trim();
+function envoyerCommande(event) { // Ajout de event ici
+    // Empêcher le comportement par défaut si c'est un bouton de formulaire
+    if(event) event.preventDefault();
 
-    // 🔥 priorité texte
+    let tel = document.getElementById("telephone").value.trim();
+    let qSelect = typeof selectedQuartier !== 'undefined' ? selectedQuartier : "";
+    let qLibre = document.getElementById("quartierLibre").value.trim();
+    let gpsLocation = typeof gps !== 'undefined' ? gps : ""; // Sécurité si GPS n'est pas défini
+
+    // 🔥 Détermination du quartier (Priorité au texte libre, sinon sélection)
     let quartier = qLibre || qSelect;
     let livraison = document.getElementById("livraison").value;
 
+    // --- VALIDATIONS STRICTES ---
     if(!tel) return alert("📞 Numéro de téléphone requis");
     if(!livraison) return alert("🚚 Veuillez choisir un type de livraison");
-    if(!quartier && !gps) return alert("📍 Adresse ou GPS requis");
+    
+    // On force soit le quartier (liste ou écrit), soit le GPS
+    if(!quartier && !gpsLocation) {
+        return alert("📍 Précisez votre quartier ou partagez votre position GPS pour la livraison.");
+    }
 
     let panier = JSON.parse(localStorage.getItem("panier") || "[]");
     if(panier.length === 0) return alert("🛒 Votre panier est vide");
 
-    // Animation du bouton pour éviter les doubles clics
+    // --- ANIMATION DU BOUTON ---
     const btn = event.target;
+    const texteOriginal = btn.innerText;
     btn.disabled = true;
     btn.innerText = "⏳ Traitement en cours...";
 
+    // --- ENVOI AU SERVEUR ---
     fetch("/commander", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
             telephone: tel,
-            adresse: quartier,
-            gps: gps || "",
+            adresse: quartier, // Sera utilisé pour la colonne 'adresse'
+            gps: gpsLocation,
             livraison: livraison,
-            zone: quartier, 
+            zone: quartier,    // Utilisé pour la recherche de prix automatique
             panier: panier.map(p => ({ id: p.id, qte: p.quantite }))
         })
     })
     .then(r => r.json())
     .then(r => {
         if(r.success && r.redirect_url){
-            // ✅ VIDER LE PANIER AVANT DE PARTIR AU PAIEMENT
+            // ✅ VIDER LE PANIER
             localStorage.removeItem("panier");
-
-            // 🔥 REDIRECTION VERS FEDAPAY
+            // 🔥 REDIRECTION (Vers FedaPay ou vers Suivi selon le cas)
             window.location.href = r.redirect_url;
         } else {
-            alert("❌ Erreur : " + (r.message || "Vérifiez vos informations"));
+            alert("❌ " + (r.message || "Vérifiez vos informations"));
             btn.disabled = false;
-            btn.innerText = "✅ Commander";
+            btn.innerText = texteOriginal;
         }
     })
     .catch(err => {
         console.error(err);
-        alert("❌ Erreur de connexion au serveur");
+        alert("❌ Erreur de connexion : vérifiez votre connexion internet.");
         btn.disabled = false;
-        btn.innerText = "✅ Commander";
+        btn.innerText = texteOriginal;
     });
 }
 </script>
