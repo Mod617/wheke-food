@@ -233,14 +233,15 @@ def commander():
     import requests
     import uuid
     import os
+    from app import socketio # Assure-toi que socketio est bien importé
 
     data = request.get_json()
     telephone = data.get("telephone")
-    adresse = data.get("adresse", "")  # Quartier écrit manuellement
-    gps = data.get("gps", "")          # Coordonnées Maps
+    adresse = data.get("adresse", "")
+    gps = data.get("gps", "")
     panier = data.get("panier", [])
     livraison = data.get("livraison", "standard")
-    zone_nom = data.get("zone", "")    # Quartier choisi dans la liste
+    zone_nom = data.get("zone", "")
 
     if not telephone or not panier:
         return jsonify({"success": False, "message": "Téléphone ou panier vide"})
@@ -254,7 +255,7 @@ def commander():
             total_plats += round(prix_reel) * int(item.get("qte", 1))
 
     # 2. GESTION DE LA LIVRAISON
-    prix_livraison = None  # On initialise à None (pas 0 !)
+    prix_livraison = None
     zone_identifiee = False
 
     if zone_nom:
@@ -264,14 +265,11 @@ def commander():
             prix_livraison = z_db.prix_standard if livraison == "standard" else z_db.prix_express
             zone_identifiee = True
 
-    # Si la zone n'est pas identifiée (GPS ou quartier manuel), prix_livraison reste à None
     total_final = total_plats + (prix_livraison if prix_livraison else 0)
     track_id = str(uuid.uuid4())[:8].upper() 
 
     # 3. ENREGISTREMENT DB
     try:
-        # Si prix_livraison est None, on peut mettre une valeur par défaut en DB 
-        # mais on garde le statut 'attente_prix' pour l'admin
         nouveau_statut = "attente_paiement" if zone_identifiee else "attente_prix"
         
         commande = models.Commande(
@@ -281,7 +279,8 @@ def commander():
             type_livraison=livraison, 
             statut=nouveau_statut,
             tracking_id=track_id, 
-            prix_livraison=prix_livraison if prix_livraison else 0, # Temporairement 0 en DB
+            prix_livraison=prix_livraison if prix_livraison else 0,
+            total_plats=total_plats, # Ajouté pour tes calculs admin
             total=total_final
         )
         db.session.add(commande)
@@ -296,46 +295,49 @@ def commander():
                     prix=p, quantite=int(item.get("qte", 1)), image=met.media
                 ))
         db.session.commit()
+
+        # 🔥 ALERTE ADMIN : On fait sonner le dashboard !
+        socketio.emit("nouvelle_commande", {"tracking_id": track_id})
+
     except Exception as e:
+        print(f"Erreur DB: {e}") # Pour voir l'erreur dans tes logs
         return jsonify({"success": False, "message": "Erreur Base de données"})
 
     # 4. LOGIQUE DE PAIEMENT
-    # Si la zone est identifiée, on génère le lien FedaPay immédiatement
     if zone_identifiee:
-        api_key = os.getenv('FEDAPAY_SECRET_KEY')
-        base_url = "https://api.fedapay.com/v1" if "live" in api_key else "https://sandbox-api.fedapay.com/v1"
-        headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
-        
-        payload = {
-            "amount": int(total_final),
-            "currency": {"iso": "XOF"},
-            "description": f"Commande {track_id} - Wheke Food",
-            "customer": {
-                "firstname": "Client", "lastname": "Bénin",
-                "email": "whekefood@gmail.com",
-                "phone_number": {"number": telephone, "country": "bj"}
-            },
-            "callback_url": url_for('valider_paiement_final', tracking_id=track_id, _external=True, _scheme='https')
-        }
-
         try:
-            req = requests.post(f"{base_url}/transactions", json=payload, headers=headers)
+            api_key = os.getenv('FEDAPAY_SECRET_KEY')
+            base_url = "https://api.fedapay.com/v1" if "live" in api_key else "https://sandbox-api.fedapay.com/v1"
+            headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+            
+            payload = {
+                "amount": int(total_final),
+                "currency": {"iso": "XOF"},
+                "description": f"Commande {track_id} - Wheke Food",
+                "customer": {
+                    "firstname": "Client", "lastname": "Bénin",
+                    "email": "whekefood@gmail.com",
+                    "phone_number": {"number": telephone, "country": "bj"}
+                },
+                "callback_url": url_for('valider_paiement_final', tracking_id=track_id, _external=True, _scheme='https')
+            }
+
+            req = requests.post(f"{base_url}/transactions", json=payload, headers=headers, timeout=10)
             res = req.json()
             transaction_data = res.get('v1/transaction') or res
             trans_id = transaction_data.get('id')
 
             if trans_id:
-                token_req = requests.post(f"{base_url}/transactions/{trans_id}/token", json={}, headers=headers)
+                token_req = requests.post(f"{base_url}/transactions/{trans_id}/token", json={}, headers=headers, timeout=10)
                 token_res = token_req.json()
                 token_data = token_res.get('v1/token') or token_res
                 
                 if token_data and isinstance(token_data, dict) and token_data.get('url'):
                     return jsonify({"success": True, "redirect_url": token_data['url']})
-        except:
-            pass # En cas d'erreur API, on laisse quand même le client aller vers le suivi
+        except Exception as e:
+            print(f"Erreur FedaPay: {e}")
 
-    # Si zone NON identifiée OU erreur FedaPay, on redirige vers le suivi
-    # Le client verra le message "Prix en cours d'estimation"
+    # 5. REDIRECTION FINALE (Si zone inconnue ou erreur paiement)
     return jsonify({
         "success": True, 
         "redirect_url": url_for('suivi_commande', tracking_id=track_id) 

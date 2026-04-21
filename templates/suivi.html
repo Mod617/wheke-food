@@ -181,10 +181,10 @@
             {% if commande.statut == 'attente_paiement' %}
                 <button onclick="relancerPaiement()" id="btnPayer" 
                     style="width: 100%; padding: 15px; background: #27ae60; color: white; border: none; border-radius: 12px; font-weight: bold; font-size: 16px; cursor: pointer; box-shadow: 0 4px 10px rgba(39, 174, 96, 0.3);">
-                    💳 PAYER MA COMMANDE (FedaPay)
+                    💳 PAYER MA COMMANDE 
                 </button>
                 <p style="text-align: center; font-size: 11px; color: #888; margin-top: 8px;">
-                    Vous pouvez relancer le paiement autant de fois que nécessaire.
+                    Le paiement n’a pas abouti. Nous vous invitons à réessayer en utilisant le bouton ci-dessus 👆. Merci pour votre confiance.
                 </p>
             {% elif commande.statut == 'recu' %}
                 <div style="background: #dcf8c6; padding: 10px; border-radius: 10px; text-align: center; color: #27ae60; font-weight: bold;">
@@ -241,13 +241,13 @@
                 window.location.href = data.redirect_url;
             } else {
                 alert("Erreur : " + (data.message || "Impossible de générer le lien"));
-                btn.innerText = "💳 PAYER MA COMMANDE (FedaPay)";
+                btn.innerText = "💳 PAYER MA COMMANDE ";
                 btn.disabled = false;
             }
         })
         .catch(err => {
             alert("Erreur de connexion");
-            btn.innerText = "💳 PAYER MA COMMANDE (FedaPay)";
+            btn.innerText = "💳 PAYER MA COMMANDE ";
             btn.disabled = false;
         });
     }
