@@ -166,14 +166,32 @@
         {% endif %}
     </div>
 
-    <div class="bubble bot">
-        {% if commande.prix_livraison == None %}
-            <p class="wait">⏳ Calcul des frais de livraison en cours...</p>
+    <div class="bubble bot" id="sectionPaiement">
+        {% if commande.statut == 'attente_prix' %}
+            <p class="wait">⏳ L'administrateur calcule vos frais de livraison...</p>
+            <p style="font-size: 0.9em; color: #666;">Le bouton de paiement s'affichera ici dès que le tarif sera validé.</p>
         {% else %}
-            🚚 Livraison : {{ commande.prix_livraison }} FCFA
-            <div class="total-section" style="color: #2c3e50; font-size: 1.1em;">
-                💰 TOTAL : {{ commande.total }} FCFA
+            <div id="recapTarif">
+                🚚 Livraison : <b>{{ commande.prix_livraison }} FCFA</b>
+                <div class="total-section" style="color: #2c3e50; font-size: 1.2em; margin-bottom: 15px;">
+                    💰 TOTAL À PAYER : {{ commande.total }} FCFA
+                </div>
             </div>
+
+            {% if commande.statut == 'attente_paiement' %}
+                <button onclick="relancerPaiement()" id="btnPayer" 
+                    style="width: 100%; padding: 15px; background: #27ae60; color: white; border: none; border-radius: 12px; font-weight: bold; font-size: 16px; cursor: pointer; box-shadow: 0 4px 10px rgba(39, 174, 96, 0.3);">
+                    💳 PAYER MA COMMANDE (FedaPay)
+                </button>
+                <p style="text-align: center; font-size: 11px; color: #888; margin-top: 8px;">
+                    Vous pouvez relancer le paiement autant de fois que nécessaire.
+                </p>
+            {% elif commande.statut == 'recu' %}
+                <div style="background: #dcf8c6; padding: 10px; border-radius: 10px; text-align: center; color: #27ae60; font-weight: bold;">
+                    ✅ Paiement effectué avec succès ! <br>
+                    <small>Votre commande sera bientôt livrée.</small>
+                </div>
+            {% endif %}
         {% endif %}
     </div>
 
@@ -206,8 +224,41 @@
     const clientLat = {{ commande.gps.split(",")[0] if commande.gps else 6.37 }};
     const clientLng = {{ commande.gps.split(",")[1] if commande.gps else 2.39 }};
 
-    // --- FONCTIONS CHAT ---
+    // --- FONCTIONS PAIEMENT ---
+    function relancerPaiement() {
+        const btn = document.getElementById("btnPayer");
+        btn.innerText = "Chargement...";
+        btn.disabled = true;
 
+        fetch("/api/relancer-paiement", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ tracking_id: trackingId })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success && data.redirect_url) {
+                window.location.href = data.redirect_url;
+            } else {
+                alert("Erreur : " + (data.message || "Impossible de générer le lien"));
+                btn.innerText = "💳 PAYER MA COMMANDE (FedaPay)";
+                btn.disabled = false;
+            }
+        })
+        .catch(err => {
+            alert("Erreur de connexion");
+            btn.innerText = "💳 PAYER MA COMMANDE (FedaPay)";
+            btn.disabled = false;
+        });
+    }
+
+    {% if commande.statut == 'attente_prix' %}
+    setTimeout(() => {
+        location.reload();
+    }, 30000); 
+    {% endif %}
+
+    // --- FONCTIONS CHAT ---
     function chargerHistorique(){
         fetch(`/api/messages/${trackingId}`)
         .then(res => res.json())
@@ -266,7 +317,7 @@
         afficherMessage(data.message, data.sender);
     });
 
-    // --- LOGIQUE CARTE & INTERFACE (MODIFIÉE) ---
+    // --- LOGIQUE CARTE & INTERFACE ---
     function afficherInterfaceGPS(){
         const container = document.getElementById("zoneCarte");
         
@@ -303,7 +354,6 @@
         }
     }
 
-    // --- AUDIO & VIBRATION ---
     let hornPlayed = false;
     function playHorn() {
         if (hornPlayed) return;
@@ -387,10 +437,8 @@
 
     socket.on("position_update", async (data) => {
         if (data.tracking !== trackingId) return;
-
         const { lat, lng, statut, livreur_nom, livreur_tel, temps_restant, vitesse, distance_restante } = data;
         
-        // Stockage des coordonnées pour ouvrirMapsLivreur()
         livreurLat = lat;
         livreurLng = lng;
 
@@ -447,10 +495,7 @@
                 fetch("/api/commande/update_gps",{
                     method:"POST",
                     headers:{ "Content-Type":"application/json" },
-                    body: JSON.stringify({
-                        tracking: trackingId,
-                        gps: gps
-                    })
+                    body: JSON.stringify({ tracking: trackingId, gps: gps })
                 })
                 .then(r=>r.json())
                 .then(r=>{
@@ -461,14 +506,13 @@
                 });
             });
         } else {
-            alert("La géolocalisation n'est pas supportée par votre navigateur.");
+            alert("La géolocalisation n'est pas supportée.");
         }
     }
 
     function ouvrirMapsLivreur(){
         if(livreurLat && livreurLng){
-            // Correction de l'URL pour pointer vers Google Maps proprement
-            window.open(`https://www.google.com/maps/search/?api=1&query=${livreurLat},${livreurLng}`);
+            window.open(`https://www.google.com/maps?q=${livreurLat},${livreurLng}`);
         } else {
             alert("Position du livreur indisponible pour le moment...");
         }
@@ -476,11 +520,9 @@
 
     // LANCEMENT INITIAL
     afficherInterfaceGPS();
-
     window.addEventListener("load", () => {
         chargerHistorique();
     });
-
 </script>
 </body>
 </html>
