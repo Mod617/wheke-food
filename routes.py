@@ -509,6 +509,15 @@ def admin_login():
 @app.route("/admin/dashboard")
 @login_required
 def admin_dashboard():
+    # --- CONTRÔLE D'ACCÈS EXPLICITE (AUDIT SÉCURITÉ N°2) ---
+    # On vérifie que l'utilisateur connecté est bien un Admin et non un Livreur
+    from flask_login import current_user
+    import models
+    
+    if not isinstance(current_user, models.Admin):
+        abort(403)
+    # -------------------------------------------------------
+
     commandes = models.Commande.query.order_by(models.Commande.date.desc()).all()
 
     for c in commandes:
