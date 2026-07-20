@@ -19,6 +19,22 @@ from flask_limiter.util import get_remote_address
 
 print("🚀 APPLICATION WHÈKÈ FOOD DÉMARRE")
 
+# =====================================================================
+# VALIDATION STRICTE DES SECRETS DE PRODUCTION (AUDIT SÉCURITÉ N°1)
+# =====================================================================
+# L'application refuse de démarrer si un secret critique est absent.
+SECRET_KEY = os.environ.get("SECRET_KEY")
+FEDAPAY_SECRET = os.environ.get("FEDAPAY_SECRET_KEY")
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD")
+
+if not SECRET_KEY:
+    raise RuntimeError("Erreur critique de sécurité : La variable d'environnement 'SECRET_KEY' est manquante.")
+if not FEDAPAY_SECRET:
+    raise RuntimeError("Erreur critique de sécurité : La variable d'environnement 'FEDAPAY_SECRET_KEY' est manquante.")
+if not ADMIN_PASSWORD:
+    raise RuntimeError("Erreur critique de sécurité : La variable d'environnement 'ADMIN_PASSWORD' est manquante.")
+# =====================================================================
+
 app = Flask(__name__)
 
 # =========================
@@ -26,12 +42,10 @@ app = Flask(__name__)
 # =========================
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "super_secret_key")
+app.config["SECRET_KEY"] = SECRET_KEY
 
 # --- CONFIGURATION FEDAPAY (Standard API) ---
 # Utilise la variable d'environnement définie dans Railway
-FEDAPAY_SECRET = os.environ.get("FEDAPAY_SECRET_KEY", "sk_live_votre_cle")
-
 try:
     fedapay.api_key = FEDAPAY_SECRET
     fedapay.environment = "live"
@@ -146,7 +160,7 @@ with app.app_context():
     if not admin:
         db.session.add(models.Admin(
             username="Mpenza",
-            password=hash_password(os.environ.get("ADMIN_PASSWORD", "change_me")),
+            password=hash_password(ADMIN_PASSWORD),
             role="super_admin"
         ))
         db.session.commit()
