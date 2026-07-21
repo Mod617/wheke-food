@@ -246,6 +246,8 @@ def commander():
 
     try:
         data = request.get_json()
+        print(f"DEBUG REÇU /commander: {data}")  # <-- Permet de voir le payload exact dans la console
+        
         if not data:
             return jsonify({"success": False, "message": "Données JSON manquantes"}), 400
 
@@ -257,7 +259,7 @@ def commander():
         zone_nom = data.get("zone", "")
 
         if not telephone or not panier:
-            return jsonify({"success": False, "message": "Téléphone ou panier vide"})
+            return jsonify({"success": False, "message": "Téléphone ou panier vide"}), 400
 
         # 1. CALCUL DU TOTAL DES PLATS
         total_plats = 0
@@ -326,7 +328,6 @@ def commander():
 
         # 4. REDIRECTION VERS LA PAGE HTML DE SUIVI
         try:
-            # On utilise 'suivi_commande' et le paramètre 'tracking'
             redirect_url = url_for('suivi_commande', tracking=commande.tracking_id)
         except Exception as url_err:
             print(f"DEBUG: url_for échoué, fallback manuel: {url_err}")
@@ -348,7 +349,6 @@ def commander():
                             "email": "assistancewhekefood@gmail.com",
                             "phone_number": {"number": telephone, "country": "bj"}
                         },
-                        # Redirection après paiement vers le suivi HTML
                         "callback_url": url_for('suivi_commande', tracking=commande.tracking_id, _external=True, _scheme='https')
                     }
                     req = requests.post(f"{base_url}/transactions", json=payload, headers=headers, timeout=10)
