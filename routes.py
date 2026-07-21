@@ -1,7 +1,7 @@
 from flask import render_template, request, redirect, jsonify, url_for, flash, abort
 from flask import current_app as app
 from datetime import datetime
-from flask_socketio import emit, join_room
+from flask_socketio import emit, join_room, leave_room
 
 from extensions import db, login_manager, socketio
 
@@ -1575,6 +1575,7 @@ def update_gps_client():
 
     return jsonify({"success": True})
 
+
 # =========================
 # 💬 CHAT CLIENT ↔ LIVREUR
 # =========================
@@ -1589,45 +1590,66 @@ def handle_message(data):
         if not tracking or not message or not sender:
             return
 
+        # 🔍 Récupération optionnelle de la livraison associée au tracking
+        commande = models.Commande.query.filter_by(tracking_id=tracking).first()
+        livraison_id = None
+        if commande and commande.livraison:
+            livraison_id = commande.livraison.id
+
         # 💾 SAUVEGARDE EN DB
         msg = models.Message(
             tracking=tracking,
             message=message,
-            sender=sender
+            sender=sender,
+            livraison_id=livraison_id
         )
         db.session.add(msg)
         db.session.commit()
 
-        # 📡 ENVOI TEMPS RÉEL
+        # 📡 ENVOI TEMPS RÉEL DANS LA ROOM
         socketio.emit("receive_message", {
             "tracking": tracking,
             "message": message,
-            "sender": sender
+            "sender": sender,
+            "date": msg.date.strftime("%H:%M") if msg.date else ""
         }, room=tracking)
 
     except Exception as e:
-        print("❌ Erreur socket message:", e)        
+        db.session.rollback()
+        print("❌ Erreur socket message:", e)
+
 
 @socketio.on("join_room")
 def handle_join_room(data):
-    tracking = data.get("tracking")
+    try:
+        # data peut être un dictionnaire ou directement la string du tracking
+        tracking = data.get("tracking") if isinstance(data, dict) else data
 
-    if tracking:
-        join_room(tracking)
-        print(f"🚪 Livreur rejoint la room : {tracking}")   
+        if tracking:
+            join_room(str(tracking))
+            print(f"🚪 Client/Livreur a rejoint la room Socket.IO : {tracking}")
+    except Exception as e:
+        print("❌ Erreur join_room:", e)
+
 
 @app.route("/api/messages/<tracking>")
 def get_messages(tracking):
+    try:
+        messages = models.Message.query.filter_by(tracking=tracking)\
+            .order_by(models.Message.date.asc()).all()
 
-    messages = models.Message.query.filter_by(tracking=tracking)\
-        .order_by(models.Message.date.asc()).all()
+        return jsonify([
+            {
+                "id": m.id,
+                "message": m.message,
+                "sender": m.sender,
+                "date": m.date.strftime("%H:%M") if m.date else ""
+            } for m in messages
+        ]), 200
 
-    return jsonify([
-        {
-            "message": m.message,
-            "sender": m.sender
-        } for m in messages
-    ])
+    except Exception as e:
+        print(f"❌ Erreur lors de la récupération des messages pour {tracking}: {e}")
+        return jsonify({"success": False, "error": "Erreur serveur"}), 500
 
 @app.route("/api/livreur/delete_messages", methods=["POST"])
 @login_required
