@@ -2,6 +2,7 @@ from flask import render_template, request, redirect, jsonify, url_for, flash, a
 from flask import current_app as app
 from datetime import datetime
 from flask_socketio import emit, join_room, leave_room
+from app import csrf
 
 from extensions import db, login_manager, socketio
 
@@ -16,6 +17,7 @@ import math
 import qrcode
 import io
 from flask import send_file
+
 
 def distance_km(lat1, lon1, lat2, lon2):
     R = 6371  # km
@@ -228,6 +230,9 @@ def accueil():
 # =========================
 # 🚀 NOUVELLE COMMANDE (JSON)
 # =========================
+  
+
+@csrf.exempt  # ⬅️ Ajout : exempte cette route de la protection CSRF (c'est une API JSON, pas un formulaire)
 @app.route("/commander", methods=["POST"])
 def commander():
     import requests
