@@ -345,7 +345,7 @@ def commander():
                         "description": f"Commande {commande.tracking_id}",
                         "customer": {
                             "firstname": "Client", "lastname": "Bénin",
-                            "email": "whekefood@gmail.com",
+                            "email": "assistancewhekefood@gmail.com",
                             "phone_number": {"number": telephone, "country": "bj"}
                         },
                         # Redirection après paiement vers le suivi HTML
@@ -401,7 +401,7 @@ def relancer_paiement():
         "customer": {
             "firstname": "Client", 
             "lastname": "Bénin",
-            "email": "whekefood@gmail.com",
+            "email": "assistancewhekefood@gmail.com",
             "phone_number": {"number": commande.telephone, "country": "bj"}
         },
         "callback_url": url_for('valider_paiement_final', tracking_id=tracking_id, _external=True, _scheme='https')
@@ -488,6 +488,14 @@ def valider_paiement_final():
 
 @app.route("/admin/login", methods=["GET", "POST"])
 def admin_login():
+    # 🔒 Si un utilisateur est déjà connecté
+    if current_user.is_authenticated:
+        if isinstance(current_user, models.Admin):
+            return redirect(url_for("admin_dashboard"))
+        else:
+            # Un livreur connecté n'a rien à faire sur le formulaire admin
+            logout_user()
+
     if request.method == "POST":
         username = request.form["username"]
         password = request.form["password"]
@@ -616,6 +624,9 @@ def add_met():
 @app.route("/admin/edit_met/<int:met_id>", methods=["POST"])
 @login_required
 def edit_met(met_id):
+    # 🔒 Contrôle d'accès strict : Seul un administrateur peut modifier un mets
+    if not isinstance(current_user, models.Admin):
+        abort(403)
 
     met = models.Met.query.get_or_404(met_id)
 
@@ -665,6 +676,10 @@ def edit_met(met_id):
 @app.route("/admin/delete_met/<int:met_id>", methods=["POST"])
 @login_required
 def delete_met(met_id):
+    # 🔒 Contrôle d'accès strict : Seul un administrateur peut supprimer un mets
+    if not isinstance(current_user, models.Admin):
+        abort(403)
+
     met = models.Met.query.get_or_404(met_id)
 
     if met.media:
@@ -681,17 +696,25 @@ def delete_met(met_id):
 # =========================
 # LOGOUT
 # =========================
-
 @app.route("/admin/logout")
 @login_required
 def logout():
+    # 🔒 Contrôle d'accès strict : Seul un administrateur peut accéder à cette route
+    if not isinstance(current_user, models.Admin):
+        abort(403)
+
     logout_user()
     return redirect(url_for("admin_login"))
 
 
 
 @app.route("/admin/data")
+@login_required
 def admin_data():
+    # 🔒 Contrôle d'accès strict : Seul un administrateur peut accéder aux données admin
+    if not isinstance(current_user, models.Admin):
+        abort(403)
+
     from models import Met, Commande
 
     plats = Met.query.all()
@@ -734,6 +757,10 @@ def page_commande():
 @app.route("/admin/set_prix/<int:commande_id>", methods=["POST"])
 @login_required
 def set_prix(commande_id):
+    # 🔒 Contrôle d'accès strict : Seul un administrateur peut définir le prix
+    if not isinstance(current_user, models.Admin):
+        abort(403)
+
     commande = models.Commande.query.get_or_404(commande_id)
 
     # Récupération du prix de livraison saisi
@@ -836,6 +863,9 @@ def api_suivi(tracking_id):
 @app.route("/admin/assign_livreur", methods=["POST"])
 @login_required
 def assign_livreur():
+    # 🔒 Contrôle d'accès strict : Seul un administrateur peut assigner un livreur
+    if not isinstance(current_user, models.Admin):
+        abort(403)
 
     commande_id = request.form.get("commande_id")
     livreur_id = request.form.get("livreur_id")
@@ -1089,6 +1119,9 @@ def update_position():
 @app.route("/api/livreur/prendre", methods=["POST"])
 @login_required
 def prendre_commande():
+    # 🔒 Contrôle d'accès strict : Seul un livreur peut effectuer cette action
+    if not isinstance(current_user, models.Livreur):
+        return jsonify({"success": False, "error": "Accès refusé"}), 403
 
     data = request.get_json()
     livraison_id = data.get("livraison_id")
@@ -1122,6 +1155,9 @@ def prendre_commande():
 @app.route("/api/livreur/commandes", methods=["GET"])
 @login_required
 def commandes_livreur():
+    # 🔒 Contrôle d'accès strict : Seul un livreur peut consulter ses commandes
+    if not isinstance(current_user, models.Livreur):
+        return jsonify({"success": False, "error": "Accès refusé"}), 403
 
     livreur = current_user
 
@@ -1156,6 +1192,9 @@ def commandes_livreur():
 @app.route("/api/livreur/livrer", methods=["POST"])
 @login_required
 def livrer_commande():
+    # 🔒 Contrôle d'accès strict : Seul un livreur peut marquer une commande comme livrée
+    if not isinstance(current_user, models.Livreur):
+        return jsonify({"success": False, "error": "Accès refusé"}), 403
 
     data = request.get_json()
     livraison_id = data.get("livraison_id")
@@ -1185,12 +1224,15 @@ def livrer_commande():
 # =========================
 @app.route("/livreur/login", methods=["GET", "POST"])
 def livreur_login():
-
-    if current_user.is_authenticated and isinstance(current_user, models.Livreur):
-        return redirect(url_for("livreur_dashboard"))
+    # 🔒 Si un utilisateur est déjà connecté
+    if current_user.is_authenticated:
+        if isinstance(current_user, models.Livreur):
+            return redirect(url_for("livreur_dashboard"))
+        else:
+            # Si un admin tente de se connecter sur la page livreur, on nettoie la session
+            logout_user()
 
     if request.method == "POST":
-
         telephone = request.form.get("telephone")
         password = request.form.get("password")
 
@@ -1207,11 +1249,9 @@ def livreur_login():
 @app.route("/livreur/dashboard")
 @login_required
 def livreur_dashboard():
-
-    # 🔒 empêcher admin d'accéder ici
+    # 🔒 Contrôle d'accès strict : Seul un livreur peut accéder à ce tableau de bord
     if not isinstance(current_user, models.Livreur):
-        logout_user()
-        return redirect(url_for("livreur_login"))
+        abort(403)
 
     return render_template("livreur.html", livreur_id=current_user.id)
 
@@ -1222,6 +1262,10 @@ def livreur_dashboard():
 @app.route("/livreur/logout")
 @login_required
 def livreur_logout():
+    # 🔒 Contrôle d'accès strict : Seul un livreur peut accéder à cette route
+    if not isinstance(current_user, models.Livreur):
+        abort(403)
+
     logout_user()
     return redirect(url_for("livreur_login"))
 
@@ -1231,6 +1275,9 @@ def livreur_logout():
 @app.route("/admin/add_livreur", methods=["POST"])
 @login_required
 def add_livreur():
+    # 🔒 Contrôle d'accès strict : Seul un administrateur peut ajouter un livreur
+    if not isinstance(current_user, models.Admin):
+        abort(403)
 
     nom = request.form.get("nom")
     telephone = request.form.get("telephone")
@@ -1260,6 +1307,9 @@ def add_livreur():
 @app.route("/admin/delete_livreur/<int:livreur_id>", methods=["POST"])
 @login_required
 def delete_livreur(livreur_id):
+    # 🔒 Contrôle d'accès strict : Seul un administrateur peut supprimer un livreur
+    if not isinstance(current_user, models.Admin):
+        abort(403)
 
     livreur = db.session.get(models.Livreur, livreur_id)
 
@@ -1285,6 +1335,9 @@ def delete_livreur(livreur_id):
 @app.route("/admin/delete_commande/<int:id>", methods=["POST"])
 @login_required
 def delete_commande(id):
+    # 🔒 Contrôle d'accès strict : Seul un administrateur peut supprimer une commande
+    if not isinstance(current_user, models.Admin):
+        abort(403)
 
     try:
         commande = db.session.get(models.Commande, id)
@@ -1326,6 +1379,9 @@ def delete_commande(id):
 @app.route("/admin/zones")
 @login_required
 def admin_zones():
+    # 🔒 Contrôle d'accès strict : Seul un administrateur peut accéder à la gestion des zones
+    if not isinstance(current_user, models.Admin):
+        abort(403)
 
     zones = models.Zone.query.all()
 
@@ -1335,6 +1391,9 @@ def admin_zones():
 @app.route("/admin/add_zone", methods=["POST"])
 @login_required
 def add_zone():
+    # 🔒 Contrôle d'accès strict : Seul un administrateur peut ajouter une zone
+    if not isinstance(current_user, models.Admin):
+        abort(403)
 
     nom = request.form.get("nom")
     prix_standard = request.form.get("prix_standard")
@@ -1358,6 +1417,9 @@ def add_zone():
 @app.route("/admin/delete_zone/<int:zone_id>", methods=["POST"])
 @login_required
 def delete_zone(zone_id):
+    # 🔒 Contrôle d'accès strict : Seul un administrateur peut supprimer une zone
+    if not isinstance(current_user, models.Admin):
+        abort(403)
 
     zone = models.Zone.query.get_or_404(zone_id)
 
@@ -1570,6 +1632,9 @@ def get_messages(tracking):
 @app.route("/api/livreur/delete_messages", methods=["POST"])
 @login_required
 def delete_messages_livreur():
+    # 🔒 Contrôle d'accès strict : Seul un livreur peut supprimer ces messages
+    if not isinstance(current_user, models.Livreur):
+        return jsonify({"success": False, "error": "Accès refusé"}), 403
 
     data = request.get_json()
     livraison_id = data.get("livraison_id")
@@ -1628,8 +1693,12 @@ def super_admin_required():
 @app.route("/admin/admins")
 @login_required
 def admin_list():
-
+    # 🔒 1. Contrôle d'accès strict : Privilège Super Admin requis en premier
     super_admin_required()
+
+    # 🔒 2. Vérification supplémentaire que c'est bien une instance Admin
+    if not isinstance(current_user, models.Admin):
+        abort(403)
 
     admins = models.Admin.query.all()
 
@@ -1641,8 +1710,12 @@ def admin_list():
 @app.route("/admin/add_admin", methods=["POST"])
 @login_required
 def add_admin():
-
+    # 🔒 1. Contrôle d'accès strict : Privilège Super Admin requis en premier
     super_admin_required()
+
+    # 🔒 2. Vérification d'instance Admin
+    if not isinstance(current_user, models.Admin):
+        abort(403)
 
     username = request.form.get("username")
     password = request.form.get("password")
@@ -1674,8 +1747,12 @@ def add_admin():
 @app.route("/admin/delete_admin/<int:admin_id>", methods=["POST"])
 @login_required
 def delete_admin(admin_id):
-
+    # 🔒 1. Contrôle d'accès strict : Privilège Super Admin requis en premier
     super_admin_required()
+
+    # 🔒 2. Vérification d'instance Admin
+    if not isinstance(current_user, models.Admin):
+        abort(403)
 
     admin = models.Admin.query.get_or_404(admin_id)
 
