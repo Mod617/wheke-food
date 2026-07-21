@@ -22,7 +22,6 @@ print("🚀 APPLICATION WHÈKÈ FOOD DÉMARRE")
 # =====================================================================
 # VALIDATION STRICTE DES SECRETS DE PRODUCTION (AUDIT SÉCURITÉ N°1)
 # =====================================================================
-# L'application vérifie la présence des secrets obligatoires.
 FEDAPAY_SECRET = os.environ.get("FEDAPAY_SECRET_KEY")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD")
 
@@ -40,12 +39,10 @@ app = Flask(__name__)
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
-# SECRET_KEY obligatoire pour Flask-Login / sessions : 
-# Récupérée de l'environnement ou générée de manière sécurisée à la volée
+# SECRET_KEY obligatoire pour Flask-Login / sessions
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY") or os.urandom(24).hex()
 
 # --- CONFIGURATION FEDAPAY (Standard API) ---
-# Utilise la variable d'environnement définie dans Railway
 try:
     fedapay.api_key = FEDAPAY_SECRET
     fedapay.environment = "live"
@@ -124,6 +121,18 @@ db.init_app(app)
 login_manager.init_app(app)
 login_manager.login_view = "admin_login"
 
+# =====================================================================
+# 🔐 GESTION DYNAMIQUE DE LA REDIRECTION NON AUTORISÉE (LIVREUR vs ADMIN)
+# =====================================================================
+@login_manager.unauthorized_handler
+def unauthorized():
+    # Si la route demandée concerne un livreur (ex: /livreur/dashboard)
+    if request.path.startswith("/livreur") or request.path.startswith("/api/livreur"):
+        return redirect(url_for("livreur_login"))
+    
+    # Par défaut, rediriger vers la connexion Admin
+    return redirect(url_for("admin_login"))
+
 # =========================
 # MODELS & USER LOADER
 # =========================
@@ -148,7 +157,7 @@ def load_user(user_id):
             except ValueError:
                 return None
 
-    # Fallback pour rétabli la rétrocompatibilité (si l'ID transmis est un entier simple)
+    # Fallback pour rétablir la rétrocompatibilité (si l'ID transmis est un entier simple)
     try:
         uid = int(user_id)
         admin = db.session.get(Admin, uid)
