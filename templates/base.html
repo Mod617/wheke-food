@@ -4,24 +4,210 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WHÉKÉ FOOD</title>
+    <title>WHÉKÉ FOOD | Restaurant en ligne</title>
     <link rel="stylesheet" href="/static/style.css">
+    
     <style>
-        /* Correction Centrage Mobile & Images Circulaires */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: #0f172a;
+            color: #f8fafc;
+            min-height: 100vh;
+            padding-bottom: 40px;
+        }
+
+        /* HEADER */
+        header {
+            background: #1e293b;
+            border-bottom: 1px solid #334155;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        header .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        header .logo img {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #ff6b00;
+        }
+
+        header h2 {
+            font-size: 18px;
+            font-weight: 800;
+            color: #ffffff;
+            letter-spacing: 0.5px;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-header {
+            padding: 8px 14px;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            background: #0f172a;
+            color: #f8fafc;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .btn-header:hover {
+            border-color: #475569;
+            background: #1e293b;
+        }
+
+        .btn-header.orders {
+            background: rgba(39, 174, 96, 0.15);
+            border-color: #27ae60;
+            color: #2ecc71;
+        }
+
+        .btn-header.orders:hover {
+            background: #27ae60;
+            color: #ffffff;
+        }
+
+        /* CATEGORIES NAV */
+        .nav-categories {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            padding: 12px 10px;
+            background: #1e293b;
+            border-bottom: 1px solid #334155;
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+
+        .nav-categories button {
+            padding: 8px 16px;
+            border: 1px solid #334155;
+            border-radius: 20px;
+            background: #0f172a;
+            color: #cbd5e1;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .nav-categories button:hover {
+            border-color: #ff6b00;
+            color: #ff6b00;
+        }
+
+        .btn-delivery-nav {
+            background: #ff6b00 !important;
+            color: #ffffff !important;
+            border: none !important;
+        }
+
+        .btn-delivery-nav:hover {
+            background: #e05e00 !important;
+        }
+
+        /* HERO ACCUEIL */
+        .accueil {
+            text-align: center;
+            padding: 30px 20px;
+            background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+            border-bottom: 1px solid #334155;
+        }
+
+        .accueil h2 {
+            font-size: 24px;
+            font-weight: 800;
+            color: #ffffff;
+            margin-bottom: 10px;
+        }
+
+        .accueil p {
+            font-size: 14px;
+            color: #94a3b8;
+            line-height: 1.6;
+        }
+
+        .btn-contact {
+            margin-top: 15px;
+            padding: 10px 24px;
+            border: 1px solid #334155;
+            border-radius: 50px;
+            background: #1e293b;
+            color: #f8fafc;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+            transition: all 0.2s ease;
+        }
+
+        .btn-contact:hover {
+            background: #334155;
+            border-color: #475569;
+        }
+
+        /* TITRES DE SECTION */
+        .section-title {
+            text-align: center;
+            font-size: 18px;
+            font-weight: 800;
+            color: #f8fafc;
+            margin-top: 40px;
+            letter-spacing: 1px;
+        }
+
+        .section-bar {
+            width: 50px;
+            height: 3px;
+            background: #ff6b00;
+            margin: 8px auto 20px;
+            border-radius: 2px;
+        }
+
+        /* GRILLE DES PLATS */
         .menu {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 20px;
-            padding: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 24px;
+            padding: 10px 20px 30px;
+            max-width: 1200px;
+            margin: 0 auto;
             justify-items: center;
         }
 
         .plat {
             width: 100%;
-            max-width: 320px;
-            background: white;
+            max-width: 300px;
+            background: #1e293b;
+            border: 1px solid #334155;
             border-radius: 20px;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
             overflow: visible; 
             display: flex;
             flex-direction: column;
@@ -29,138 +215,301 @@
             text-align: center;
             padding-top: 20px;
             position: relative;
-            margin-top: 10px;
+            margin-top: 15px;
+            transition: transform 0.2s ease, border-color 0.2s ease;
         }
 
-        /* Conteneur de l'image pour la rendre circulaire */
+        .plat:hover {
+            transform: translateY(-4px);
+            border-color: #475569;
+        }
+
+        /* Conteneur de l'image circulaire */
         .img-container {
             position: relative;
-            width: 180px; 
-            height: 180px;
-            background: white;
+            width: 160px; 
+            height: 160px;
+            background: #0f172a;
             border-radius: 50%;
             display: flex;
             justify-content: center;
             align-items: center;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-            border: 3px solid #f9f9f9;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            border: 3px solid #334155;
         }
 
         .plat img {
             width: 85%;  
             height: 85%;
-            object-fit: contain; 
+            object-fit: cover; 
             border-radius: 50%;
         }
 
         /* Style des Badges */
         .badge {
             position: absolute;
-            top: -10px;
-            right: 10px;
+            top: -12px;
+            right: 12px;
             padding: 5px 12px;
             border-radius: 20px;
-            font-size: 12px;
-            font-weight: bold;
+            font-size: 11px;
+            font-weight: 700;
             color: white;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-            z-index: 100;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            z-index: 10;
         }
 
-        .now { background: #e74c3c; }      /* Rouge */
+        .now { background: #ef4444; }      /* Rouge */
         .today { background: #ff6b00; }    /* Orange */
-        .tomorrow { background: #f1c40f; } /* Jaune */
-        .later { background: #3498db; }    /* Bleu */
+        .tomorrow { background: #eab308; } /* Jaune */
+        .later { background: #3b82f6; }    /* Bleu */
 
         .card-body {
-            padding: 15px;
+            padding: 16px;
             width: 100%;
             box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .card-body h3 {
+            font-size: 16px;
+            font-weight: 700;
+            color: #ffffff;
+        }
+
+        .prix-barre {
+            text-decoration: line-through;
+            color: #64748b;
+            font-size: 12px;
+            margin-bottom: -4px;
+        }
+
+        .prix-final {
+            font-size: 18px;
+            font-weight: 800;
+            color: #ff6b00;
+        }
+
+        /* Quantité Selector */
+        .quantite {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin: 6px 0;
+        }
+
+        .quantite button {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            border: 1px solid #334155;
+            background: #0f172a;
+            color: #ffffff;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .quantite button:hover {
+            border-color: #ff6b00;
+            color: #ff6b00;
+        }
+
+        .quantite input {
+            background: transparent;
+            color: #ffffff;
+            border: none;
+            font-weight: 700;
+            font-size: 14px;
+            text-align: center;
         }
 
         .btn-add {
             width: 100%;
-            max-width: 250px;
-            margin: 10px auto;
+            padding: 10px;
+            border: none;
+            border-radius: 10px;
+            background: #ff6b00;
+            color: white;
+            font-weight: 700;
+            font-size: 13px;
+            cursor: pointer;
+            transition: background 0.2s ease, transform 0.1s ease;
+            -webkit-tap-highlight-color: transparent;
         }
 
-        /* Tableau de Livraison Responsive */
+        .btn-add:hover {
+            background: #e05e00;
+        }
+
+        .btn-add:active {
+            transform: scale(0.98);
+        }
+
+        /* LIVRAISON SECTION */
         .delivery-section {
-            padding: 20px 10px;
-            background: #f9f9f9;
+            padding: 10px 20px;
+            max-width: 1000px;
+            margin: 0 auto;
         }
 
         .table-container {
-            max-width: 1000px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 15px;
+            background: #1e293b;
+            border-radius: 16px;
+            border: 1px solid #334155;
             overflow: hidden;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3);
         }
 
         .delivery-table {
             width: 100%;
             border-collapse: collapse;
-        }
-
-        .delivery-table th {
-            background: #ff6b00;
-            color: white;
-            padding: 15px;
             text-align: left;
         }
 
+        .delivery-table th {
+            background: #0f172a;
+            color: #94a3b8;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            padding: 14px 16px;
+            border-bottom: 1px solid #334155;
+        }
+
         .delivery-table td {
-            padding: 15px;
-            border-bottom: 1px solid #eee;
-            font-size: 14px;
-            color: #333;
+            padding: 14px 16px;
+            border-bottom: 1px solid #334155;
+            font-size: 13px;
+            color: #cbd5e1;
         }
 
         .zone-tag {
-            background: #ff6b00;
-            color: white;
+            background: rgba(255, 107, 0, 0.15);
+            color: #ff6b00;
+            border: 1px solid #ff6b00;
             padding: 4px 10px;
-            border-radius: 5px;
-            font-weight: bold;
+            border-radius: 6px;
+            font-weight: 700;
+            font-size: 12px;
             white-space: nowrap;
         }
 
         .price-tag {
-            font-weight: bold;
-            color: #ff6b00;
+            font-weight: 700;
+            color: #38bdf8;
         }
 
-        /* Responsive Table Mobile */
+        /* Responsive Mobile Table */
         @media screen and (max-width: 768px) {
             .delivery-table thead { display: none; }
             .delivery-table tr {
                 display: block;
-                margin-bottom: 15px;
-                border: 2px solid #ff6b00;
-                border-radius: 10px;
+                margin: 12px;
+                border: 1px solid #334155;
+                border-radius: 12px;
+                background: #0f172a;
             }
             .delivery-table td {
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
                 text-align: right;
-                border-bottom: 1px solid #eee;
-                padding: 10px;
+                border-bottom: 1px solid #334155;
+                padding: 12px;
             }
             .delivery-table td::before {
                 content: attr(data-label);
-                font-weight: bold;
+                font-weight: 700;
                 color: #ff6b00;
+                font-size: 12px;
                 margin-right: 10px;
             }
             .delivery-table td:last-child { border-bottom: none; }
         }
 
-        .btn-delivery-nav {
-            background: #ff6b00 !important;
-            color: white !important;
+        /* NOTIFICATION TOAST */
+        #notif {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #10b981;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 14px;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.4);
+            display: none;
+            z-index: 2000;
+        }
+
+        /* PANIER OVERLAY & POPUP */
+        #panier_overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
+            display: none;
+            z-index: 1500;
+        }
+
+        #panier_popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90%;
+            max-width: 420px;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 20px;
+            padding: 24px;
+            box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5);
+            display: none;
+            z-index: 1600;
+        }
+
+        .close-panier {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            background: transparent;
+            border: none;
+            color: #94a3b8;
+            font-size: 18px;
+            cursor: pointer;
+        }
+
+        .close-panier:hover { color: #ffffff; }
+
+        #backToTop {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #1e293b;
+            border: 1px solid #334155;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            z-index: 900;
+        }
+
+        footer {
+            text-align: center;
+            padding: 30px 20px 10px;
+            color: #64748b;
+            font-size: 13px;
         }
     </style>
 </head>
@@ -171,14 +520,15 @@
 
     <div id="panier_popup" onclick="event.stopPropagation()">
         <button class="close-panier" onclick="fermerPanier()">✖</button>
-        <h3 style="margin: 5px 0;">🛒 Votre Panier</h3>
-        <div id="panier_items"></div>
-        <div style="border-top: 1px solid rgba(255,255,255,0.3); padding-top: 10px;">
-            <p style="font-weight:bold; font-size:1.2rem; margin: 0;">
-                Total : <span id="panier_total">0</span> FCFA
+        <h3 style="margin-bottom: 15px; color: #ffffff;">🛒 Votre Panier</h3>
+        <div id="panier_items" style="max-height: 250px; overflow-y: auto; margin-bottom: 15px;"></div>
+        <div style="border-top: 1px solid #334155; padding-top: 15px;">
+            <p style="font-weight: bold; font-size: 1.1rem; color: #ffffff; display: flex; justify-content: space-between;">
+                <span>Total :</span>
+                <span style="color: #ff6b00;"><span id="panier_total">0</span> FCFA</span>
             </p>
             <button onclick="allerVersCommande()"
-                style="margin-top:10px; padding:15px; border:none; border-radius:12px; background:black; color:white; cursor:pointer; font-weight:bold; width:100%; font-size: 1rem;">
+                style="margin-top: 15px; padding: 14px; border: none; border-radius: 10px; background: #ff6b00; color: white; cursor: pointer; font-weight: bold; width: 100%; font-size: 1rem; transition: background 0.2s;">
                 Commander maintenant
             </button>
         </div>
@@ -188,16 +538,14 @@
 
     <header>
         <div class="logo">
-            <img src="{{ url_for('static', filename='logo.jpg') }}">
+            <img src="{{ url_for('static', filename='logo.jpg') }}" alt="Whèkè Food">
             <h2>WHÉKÉ FOOD</h2>
         </div>
-        <div style="display: flex; align-items: center;">
-            <button id="panier_btn" onclick="ouvrirPanier()"
-                style="padding: 8px 12px; border:none; border-radius:8px; background:#111; color:white; cursor:pointer; font-weight:bold;">
-                🛒 (<span id="panier_count">0</span>)
+        <div class="header-actions">
+            <button id="panier_btn" class="btn-header" onclick="ouvrirPanier()">
+                🛒 (<span id="panier_count" style="color: #ff6b00;">0</span>)
             </button>
-            <button onclick="voirCommandes()"
-                style="margin-left:10px; padding:8px 12px; border:none; border-radius:8px; background:#27ae60; color:white; cursor:pointer; font-weight:bold;">
+            <button class="btn-header orders" onclick="voirCommandes()">
                 📦 Mes commandes
             </button>
         </div>
@@ -216,13 +564,10 @@
         <h2>Restaurant en ligne 🍽️</h2>
         <p>
             🚚 Livraison rapide à Cotonou & Calavi<br>
-            💰 Paiement en ligne <br>
+            💰 Paiement en ligne sécurisé<br>
             📍 On vous livre même hors zone !
         </p>
-        <button onclick="window.location.href='/contact'"
-            style="margin-top: 15px; padding: 10px 20px; border: none; border-radius: 50px; background: #2c3e50; color: white; cursor: pointer; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.2); transition: 0.3s;"
-            onmouseover="this.style.background='#1a252f'"
-            onmouseout="this.style.background='#2c3e50'">
+        <button class="btn-contact" onclick="window.location.href='/contact'">
             📩 Contactez-nous
         </button>
     </section>
@@ -244,7 +589,7 @@
             {% endif %}
 
             <div class="img-container">
-                <img src="{{ url_for('static', filename='uploads/' + met.media) if met.media else url_for('static', filename='default.jpg') }}">
+                <img src="{{ url_for('static', filename='uploads/' + met.media) if met.media else url_for('static', filename='default.jpg') }}" alt="{{ met.nom }}">
             </div>
 
             <div class="card-body">
@@ -253,12 +598,13 @@
                 <p class="prix-barre">{{ met.prix }} F</p>
                 {% endif %}
                 <p class="prix-final">{{ prix_final }} FCFA</p>
-                <p style="font-size: 13px; color: #666;">
+                <p style="font-size: 12px; color: #94a3b8;">
                     ⏰ {{ met.heure_debut }} - {{ met.heure_fin }}
                 </p>
+
                 <div class="quantite">
                     <button onclick="moins('{{ met.id }}')">-</button>
-                    <input id="q{{ met.id }}" value="1" readonly style="width: 30px; text-align: center; border: none; font-weight: bold;">
+                    <input id="q{{ met.id }}" value="1" readonly>
                     <button onclick="plus('{{ met.id }}')">+</button>
                 </div>
 
@@ -355,7 +701,6 @@
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        // Ajoute la fonction allerVersCommande ici au cas où elle manque dans script.js
         function allerVersCommande() {
             let p = JSON.parse(localStorage.getItem("panier")) || [];
             if (p.length === 0) {

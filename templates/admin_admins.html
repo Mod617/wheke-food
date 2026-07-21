@@ -1,43 +1,288 @@
 <!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
-    <title>Gestion des Admins</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestion des Admins | Whèkè Food</title>
     <style>
-        body { font-family: Arial; padding: 30px; background:#f4f6f9; }
-        h2 { margin-bottom: 20px; }
-        form { margin-bottom: 20px; }
-        input { padding:10px; margin-right:10px; }
-        button { padding:10px 15px; cursor:pointer; }
-        .admin { background:white; padding:15px; margin-bottom:10px; border-radius:10px; display:flex; justify-content:space-between; align-items:center; }
-        .role { font-size:12px; color:gray; }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background: #0f172a;
+            color: #f8fafc;
+            padding: 30px 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        h2 {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 24px;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* CARD FORMULAIRE */
+        .card {
+            background: #1e293b;
+            padding: 24px;
+            border-radius: 16px;
+            border: 1px solid #334155;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+            margin-bottom: 30px;
+        }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #cbd5e1;
+            margin-bottom: 16px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr auto;
+            gap: 12px;
+            align-items: center;
+        }
+
+        @media (max-width: 640px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px 16px;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            color: #ffffff;
+            font-size: 14px;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+
+        input:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        }
+
+        .password-input {
+            padding-right: 45px;
+        }
+
+        .toggle-password {
+            position: absolute;
+            right: 12px;
+            background: none;
+            border: none;
+            color: #94a3b8;
+            cursor: pointer;
+            padding: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .toggle-password:hover {
+            color: #f8fafc;
+        }
+
+        .toggle-password svg {
+            width: 20px;
+            height: 20px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .btn-add {
+            padding: 12px 20px;
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.2s ease, transform 0.1s ease;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .btn-add:hover {
+            background: #1d4ed8;
+        }
+
+        .btn-add:active {
+            transform: scale(0.98);
+        }
+
+        /* LISTE DES ADMINS */
+        .admin-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .admin-card {
+            background: #1e293b;
+            padding: 16px 20px;
+            border-radius: 12px;
+            border: 1px solid #334155;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .admin-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .admin-username {
+            font-weight: 600;
+            font-size: 16px;
+            color: #ffffff;
+        }
+
+        .role-badge {
+            font-size: 12px;
+            color: #94a3b8;
+            background: #0f172a;
+            padding: 2px 8px;
+            border-radius: 6px;
+            width: fit-content;
+            border: 1px solid #334155;
+        }
+
+        .btn-delete {
+            background: rgba(239, 68, 68, 0.15);
+            color: #fca5a5;
+            border: 1px solid #ef4444;
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-delete:hover {
+            background: #dc2626;
+            color: #ffffff;
+        }
+
+        /* FLASH MESSAGES */
+        .flash-message {
+            background: rgba(59, 130, 246, 0.15);
+            border: 1px solid #3b82f6;
+            color: #93c5fd;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
     </style>
 </head>
 <body>
 
-<h2>👑 Gestion des Admins</h2>
+<div class="container">
+    <h2>👑 Gestion des Administrateurs</h2>
 
-<!-- ➕ AJOUT ADMIN -->
-<form method="POST" action="/admin/add_admin">
-    <input type="text" name="username" placeholder="Username" required>
-    <input type="password" name="password" placeholder="Mot de passe" required>
-    <button type="submit">Ajouter</button>
-</form>
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for message in messages %}
+                <div class="flash-message">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
 
-<!-- 📋 LISTE ADMINS -->
-{% for admin in admins %}
-<div class="admin">
-    <div>
-        <strong>{{ admin.username }}</strong>
-        <div class="role">{{ admin.role }}</div>
+    <!-- ➕ AJOUT ADMIN -->
+    <div class="card">
+        <div class="card-title">Ajouter un administrateur</div>
+        <form method="POST" action="/admin/add_admin">
+            <!-- 🛡️ Jetons CSRF obligatoire -->
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
+            <div class="form-grid">
+                <input type="text" name="username" placeholder="Nom d'utilisateur" required autocomplete="off">
+                
+                <div class="input-wrapper">
+                    <input type="password" id="password" name="password" class="password-input" placeholder="Mot de passe" required autocomplete="new-password">
+                    <button type="button" class="toggle-password" id="togglePasswordBtn" aria-label="Afficher/Masquer le mot de passe">
+                        <svg id="eyeIcon" viewBox="0 0 24 24">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                    </button>
+                </div>
+
+                <button type="submit" class="btn-add">Ajouter</button>
+            </div>
+        </form>
     </div>
 
-    {% if admin.role != "super_admin" %}
-    <form method="POST" action="/admin/delete_admin/{{ admin.id }}">
-        <button style="background:red; color:white;">Supprimer</button>
-    </form>
-    {% endif %}
+    <!-- 📋 LISTE ADMINS -->
+    <div class="admin-list">
+        {% for admin in admins %}
+        <div class="admin-card">
+            <div class="admin-info">
+                <span class="admin-username">{{ admin.username }}</span>
+                <span class="role-badge">{{ admin.role }}</span>
+            </div>
+
+            {% if admin.role != "super_admin" %}
+            <form method="POST" action="/admin/delete_admin/{{ admin.id }}">
+                <!-- 🛡️ Jetons CSRF obligatoire pour la suppression -->
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <button type="submit" class="btn-delete" onclick="return confirm('Confirmer la suppression de cet admin ?')">Supprimer</button>
+            </form>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
 </div>
-{% endfor %}
+
+<script>
+    const togglePasswordBtn = document.getElementById('togglePasswordBtn');
+    const passwordInput = document.getElementById('password');
+    const eyeIcon = document.getElementById('eyeIcon');
+
+    const eyeSVG = `<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>`;
+    const eyeOffSVG = `<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line>`;
+
+    togglePasswordBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        const isPassword = passwordInput.getAttribute('type') === 'password';
+        passwordInput.setAttribute('type', isPassword ? 'text' : 'password');
+        eyeIcon.innerHTML = isPassword ? eyeOffSVG : eyeSVG;
+    });
+</script>
 
 </body>
 </html>

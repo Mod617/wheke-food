@@ -1,145 +1,215 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Suivi de ma commande - Live</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Suivi de ma commande - Live</title>
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-<script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
 
-<style>
-    body {
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        background: #e5ddd5;
-        padding: 20px;
-        padding-bottom: 220px; /* Espace pour le chat fixe */
-        margin: 0;
-        overflow-x: hidden;
-    }
+    <style>
+        :root {
+            --primary-color: #27ae60;
+            --primary-dark: #219150;
+            --bg-color: #e5ddd5;
+            --text-color: #2c3e50;
+        }
 
-    .chat-container {
-        max-width: 500px;
-        margin: auto;
-        display: flex;
-        flex-direction: column;
-    }
+        * {
+            box-sizing: border-box;
+        }
 
-    .bubble {
-        padding: 12px 15px;
-        border-radius: 15px;
-        margin-bottom: 10px;
-        max-width: 85%;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-    }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: var(--bg-color);
+            padding: 15px;
+            padding-bottom: calc(230px + env(safe-area-inset-bottom));
+            margin: 0;
+            overflow-x: hidden;
+            color: var(--text-color);
+        }
 
-    .me { background: #dcf8c6; align-self: flex-end; }
-    .bot { background: white; align-self: flex-start; }
+        .chat-container {
+            max-width: 500px;
+            margin: auto;
+            display: flex;
+            flex-direction: column;
+        }
 
-    .item {
-        display: flex;
-        align-items: center;
-        margin-top: 10px;
-        border-bottom: 1px solid #eee;
-        padding-bottom: 5px;
-    }
+        .bubble {
+            padding: 12px 15px;
+            border-radius: 15px;
+            margin-bottom: 12px;
+            max-width: 88%;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+            word-wrap: break-word;
+        }
 
-    .item img {
-        width: 50px;
-        height: 50px;
-        border-radius: 8px;
-        margin-right: 12px;
-        object-fit: cover;
-    }
+        .me { background: #dcf8c6; align-self: flex-end; border-bottom-right-radius: 3px; }
+        .bot { background: #ffffff; align-self: flex-start; border-bottom-left-radius: 3px; }
 
-    .total-section {
-        font-weight: bold;
-        margin-top: 10px;
-        border-top: 2px solid #eee;
-        padding-top: 5px;
-    }
+        .item {
+            display: flex;
+            align-items: center;
+            margin-top: 10px;
+            border-bottom: 1px solid #f0f0f0;
+            padding-bottom: 8px;
+        }
 
-    .wait { color: #f39c12; font-weight: bold; }
-    .ok { color: #27ae60; font-weight: bold; }
+        .item img {
+            width: 50px;
+            height: 50px;
+            border-radius: 8px;
+            margin-right: 12px;
+            object-fit: cover;
+            background: #eee;
+        }
 
-    #map {
-        height: 350px;
-        width: 100%;
-        margin-top: 15px;
-        border-radius: 20px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.15);
-        z-index: 1;
-    }
+        .total-section {
+            font-weight: bold;
+            margin-top: 10px;
+            border-top: 2px solid #f0f0f0;
+            padding-top: 8px;
+        }
 
-    #infoLivreur {
-        margin-top: 15px;
-        position: relative;
-        top: -40px;
-        z-index: 2;
-    }
+        .wait { color: #f39c12; font-weight: bold; }
 
-    .live-card {
-        background: white;
-        border-radius: 20px;
-        padding: 18px;
-        margin: 0 10px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-        animation: fadeIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    }
+        #map {
+            height: 320px;
+            width: 100%;
+            margin-top: 15px;
+            border-radius: 16px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.12);
+            z-index: 1;
+        }
 
-    @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(20px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
+        #infoLivreur {
+            margin-top: 15px;
+            position: relative;
+            top: -30px;
+            z-index: 2;
+        }
 
-    .live-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-    }
+        .live-card {
+            background: white;
+            border-radius: 16px;
+            padding: 18px;
+            margin: 0 5px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+            animation: fadeIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
 
-    .live-header .name { font-weight: bold; font-size: 17px; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
 
-    .live-stats {
-        display: flex;
-        justify-content: space-between;
-        margin-top: 15px;
-        text-align: center;
-        background: #f8f9fa;
-        border-radius: 12px;
-        padding: 10px;
-    }
+        .live-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
 
-    .stat-box { flex: 1; }
-    .stat-value { font-size: 16px; font-weight: bold; color: #27ae60; }
-    .stat-label { font-size: 11px; color: #888; text-transform: uppercase; }
+        .live-header .name { font-weight: bold; font-size: 16px; }
 
-    .badge {
-        background: #27ae60;
-        color: white;
-        padding: 6px 12px;
-        border-radius: 20px;
-        font-size: 11px;
-        font-weight: bold;
-    }
-    .badge.warning { background: #f39c12; }
-    .badge.danger { background: #e74c3c; animation: pulse 1s infinite; }
+        .live-stats {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 15px;
+            text-align: center;
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 10px;
+        }
 
-    @keyframes pulse {
-        0% { transform: scale(1); }
-        50% { transform: scale(1.05); }
-        100% { transform: scale(1); }
-    }
+        .stat-box { flex: 1; }
+        .stat-value { font-size: 16px; font-weight: bold; color: var(--primary-color); }
+        .stat-label { font-size: 11px; color: #777; text-transform: uppercase; }
 
-    .bike-icon {
-        background: none;
-        border: none;
-        transition: transform 0.5s ease-out;
-    }
-</style>
+        .badge {
+            background: var(--primary-color);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+        .badge.warning { background: #f39c12; }
+        .badge.danger { background: #e74c3c; animation: pulse 1s infinite; }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .bike-icon {
+            background: none;
+            border: none;
+            transition: transform 0.3s ease-out;
+        }
+
+        /* Fixed Chat Widget bottom */
+        #chatBox {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #ffffff;
+            padding: 10px 15px calc(10px + env(safe-area-inset-bottom));
+            box-shadow: 0 -2px 15px rgba(0,0,0,0.08);
+            z-index: 1000;
+        }
+
+        .chat-inner {
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        #messages {
+            max-height: 130px;
+            overflow-y: auto;
+            margin-bottom: 8px;
+            font-size: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .msg-bubble {
+            padding: 8px 12px;
+            border-radius: 12px;
+            max-width: 82%;
+            line-height: 1.4;
+            font-size: 13.5px;
+        }
+
+        .msg-client { background: #dcf8c6; align-self: flex-end; }
+        .msg-other { background: #f0f0f0; align-self: flex-start; }
+
+        .btn-action {
+            width: 100%;
+            padding: 14px;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-weight: bold;
+            font-size: 15px;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(39, 174, 96, 0.25);
+            transition: background 0.2s;
+        }
+
+        .btn-action:disabled {
+            background: #a5d6a7;
+            cursor: not-allowed;
+        }
+    </style>
 </head>
 
 <body>
@@ -155,41 +225,40 @@
         {% if commande.items %}
             {% for item in commande.items %}
             <div class="item">
-                <img src="/static/uploads/{{ item.image }}" onerror="this.src='https://via.placeholder.com/50'">
+                <img src="/static/uploads/{{ item.image }}" alt="{{ item.met_nom }}" onerror="this.src='https://via.placeholder.com/50?text=Plat'">
                 <div>
-                    <span>{{ item.met_nom }}</span><br>
-                    <small>{{ item.prix }} x {{ item.quantite }}</small>
+                    <span><b>{{ item.met_nom }}</b></span><br>
+                    <small style="color: #666;">{{ item.prix }} FCFA x {{ item.quantite }}</small>
                 </div>
             </div>
             {% endfor %}
-            <div class="total-section">Plats : {{ commande.total_plats }} FCFA</div>
+            <div class="total-section">Sous-total plats : {{ commande.total_plats }} FCFA</div>
         {% endif %}
     </div>
 
     <div class="bubble bot" id="sectionPaiement">
         {% if commande.statut == 'attente_prix' %}
             <p class="wait">⏳ L'administrateur calcule vos frais de livraison...</p>
-            <p style="font-size: 0.9em; color: #666;">Le bouton de paiement s'affichera ici dès que le tarif sera validé.</p>
+            <p style="font-size: 0.85em; color: #666; margin: 0;">Le bouton de paiement s'affichera ici dès que le tarif sera valide.</p>
         {% else %}
             <div id="recapTarif">
                 🚚 Livraison : <b>{{ commande.prix_livraison }} FCFA</b>
-                <div class="total-section" style="color: #2c3e50; font-size: 1.2em; margin-bottom: 15px;">
+                <div class="total-section" style="color: #2c3e50; font-size: 1.15em; margin-bottom: 12px;">
                     💰 TOTAL À PAYER : {{ commande.total }} FCFA
                 </div>
             </div>
 
             {% if commande.statut == 'attente_paiement' %}
-                <button onclick="relancerPaiement()" id="btnPayer" 
-                    style="width: 100%; padding: 15px; background: #27ae60; color: white; border: none; border-radius: 12px; font-weight: bold; font-size: 16px; cursor: pointer; box-shadow: 0 4px 10px rgba(39, 174, 96, 0.3);">
-                    💳 PAYER MA COMMANDE 
+                <button onclick="relancerPaiement()" id="btnPayer" class="btn-action">
+                    💳 PAYER MA COMMANDE
                 </button>
-                <p style="text-align: center; font-size: 11px; color: #888; margin-top: 8px;">
-                    Le paiement n’a pas abouti. Nous vous invitons à réessayer en utilisant le bouton ci-dessus 👆. Merci pour votre confiance.
+                <p style="text-align: center; font-size: 11px; color: #888; margin-top: 8px; margin-bottom: 0;">
+                    Le paiement n’a pas abouti. Vous pouvez réessayer en utilisant le bouton ci-dessus 👆.
                 </p>
             {% elif commande.statut == 'recu' %}
-                <div style="background: #dcf8c6; padding: 10px; border-radius: 10px; text-align: center; color: #27ae60; font-weight: bold;">
+                <div style="background: #e8f8ed; padding: 10px; border-radius: 10px; text-align: center; color: var(--primary-color); font-weight: bold; border: 1px solid #c8e6c9;">
                     ✅ Paiement effectué avec succès ! <br>
-                    <small>Votre commande sera bientôt livrée.</small>
+                    <small style="font-weight: normal; color: #444;">Votre commande est en cours de traitement.</small>
                 </div>
             {% endif %}
         {% endif %}
@@ -198,33 +267,47 @@
     <div id="zoneCarte"></div>
 
     <div id="infoLivreur">
-        <div class="live-card" style="text-align: center;">🔍 Recherche d'un livreur...</div>
+        <div class="live-card" style="text-align: center; color: #666;">🔍 Recherche d'un livreur...</div>
     </div>
 </div>
 
-<div id="chatBox" style="position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 10px; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); z-index: 1000;">
-    <div id="messages" style="max-height:150px; overflow-y:auto; margin-bottom:8px; font-size:14px; display: flex; flex-direction: column;"></div>
+<div id="chatBox">
+    <div class="chat-inner">
+        <div id="messages"></div>
 
-    <div style="display:flex; gap:5px;">
-        <input id="msgInput" placeholder="Écrire au livreur..." style="flex:1;padding:10px;border-radius:10px;border:1px solid #ddd;outline:none;">
-        <button onclick="envoyerMessage()" style="padding:10px 15px;border:none;border-radius:10px;background:#27ae60;color:white;cursor:pointer;">
-            ➤
-        </button>
+        <div style="display:flex; gap:8px;">
+            <input id="msgInput" type="text" placeholder="Écrire au livreur..." style="flex:1; padding:12px; border-radius:10px; border:1px solid #ccc; outline:none; font-size:14px;">
+            <button onclick="envoyerMessage()" style="padding:0 18px; border:none; border-radius:10px; background:var(--primary-color); color:white; font-size:16px; font-weight:bold; cursor:pointer;">
+                ➤
+            </button>
+        </div>
     </div>
 </div>
 
 <script>
-    // --- VARIABLES DE BASE ---
+    // --- VARIABLES INITIALISÉES DE MANIÈRE SÉCURISÉE ---
+    const trackingId = {{ commande.tracking_id | tojson }};
+    const commandeStatut = {{ commande.statut | tojson }};
+    
+    {% if commande.gps %}
+        const hasGPS = true;
+        const clientLat = parseFloat({{ commande.gps.split(",")[0] | tojson }});
+        const clientLng = parseFloat({{ commande.gps.split(",")[1] | tojson }});
+    {% else %}
+        const hasGPS = false;
+        const clientLat = 6.37;
+        const clientLng = 2.39;
+    {% endif %}
+
     let livreurLat = null;
     let livreurLng = null;
+    let map = null, marker = null, routeLine = null, lastPos = null;
+    let audioCtx = null;
+    let hornPlayed = false;
 
-    const hasGPS = {{ 'true' if commande.gps else 'false' }};
-    const trackingId = "{{ commande.tracking_id }}";
     const socket = io();
-    const clientLat = {{ commande.gps.split(",")[0] if commande.gps else 6.37 }};
-    const clientLng = {{ commande.gps.split(",")[1] if commande.gps else 2.39 }};
 
-    // --- FONCTIONS PAIEMENT ---
+    // --- PAIMENT ---
     function relancerPaiement() {
         const btn = document.getElementById("btnPayer");
         btn.innerText = "Chargement...";
@@ -241,64 +324,51 @@
                 window.location.href = data.redirect_url;
             } else {
                 alert("Erreur : " + (data.message || "Impossible de générer le lien"));
-                btn.innerText = "💳 PAYER MA COMMANDE ";
+                btn.innerText = "💳 PAYER MA COMMANDE";
                 btn.disabled = false;
             }
         })
-        .catch(err => {
-            alert("Erreur de connexion");
-            btn.innerText = "💳 PAYER MA COMMANDE ";
+        .catch(() => {
+            alert("Erreur de connexion au serveur.");
+            btn.innerText = "💳 PAYER MA COMMANDE";
             btn.disabled = false;
         });
     }
 
-    {% if commande.statut == 'attente_prix' %}
-    setTimeout(() => {
-        location.reload();
-    }, 30000); 
-    {% endif %}
-
-    // --- FONCTIONS CHAT ---
-    function chargerHistorique(){
-        fetch(`/api/messages/${trackingId}`)
-        .then(res => res.json())
-        .then(data => {
-            const box = document.getElementById("messages");
-            box.innerHTML = "";
-            data.forEach(msg => {
-                afficherMessage(msg.message, msg.sender);
-            });
-        });
+    if (commandeStatut === 'attente_prix') {
+        setTimeout(() => { location.reload(); }, 30000); 
     }
 
-    function afficherMessage(message, sender){
+    // --- CHAT & SANITISATION ---
+    function chargerHistorique() {
+        fetch(`/api/messages/${encodeURIComponent(trackingId)}`)
+            .then(res => res.json())
+            .then(data => {
+                const box = document.getElementById("messages");
+                box.innerHTML = "";
+                if (Array.isArray(data)) {
+                    data.forEach(msg => afficherMessage(msg.message, msg.sender));
+                }
+            })
+            .catch(err => console.error("Erreur historique:", err));
+    }
+
+    function afficherMessage(message, sender) {
         const box = document.getElementById("messages");
-        let div = document.createElement("div");
+        const div = document.createElement("div");
 
-        div.style.padding = "6px 10px";
-        div.style.marginBottom = "5px";
-        div.style.borderRadius = "10px";
-        div.style.maxWidth = "80%";
-        div.style.wordWrap = "break-word";
+        div.className = `msg-bubble ${sender === "client" ? "msg-client" : "msg-other"}`;
+        div.textContent = message; // Protection XSS native
 
-        if(sender === "client"){
-            div.style.background = "#dcf8c6";
-            div.style.marginLeft = "auto";
-        }else{
-            div.style.background = "#eee";
-            div.style.marginRight = "auto";
-        }
-
-        div.innerText = message;
         box.appendChild(div);
         box.scrollTop = box.scrollHeight;
     }
 
-    function envoyerMessage(){
-        let input = document.getElementById("msgInput");
-        let message = input.value.trim();
+    function envoyerMessage() {
+        const input = document.getElementById("msgInput");
+        const message = input.value.trim();
 
-        if(!message) return;
+        if (!message) return;
 
         socket.emit("send_message", {
             tracking: trackingId,
@@ -309,83 +379,70 @@
         input.value = "";
     }
 
-    document.getElementById("msgInput").addEventListener("keypress", function(e) {
+    document.getElementById("msgInput").addEventListener("keypress", (e) => {
         if (e.key === "Enter") envoyerMessage();
     });
 
     socket.on("receive_message", (data) => {
-        afficherMessage(data.message, data.sender);
+        if (data && data.message) {
+            afficherMessage(data.message, data.sender);
+        }
     });
 
-    // --- LOGIQUE CARTE & INTERFACE ---
-    function afficherInterfaceGPS(){
+    // --- CARTE & GEOLOCALISATION ---
+    function initMap() {
+        if (!document.getElementById('map')) return;
+        
+        map = L.map('map', { zoomControl: false }).setView([clientLat, clientLng], 15);
+        
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+
+        L.circleMarker([clientLat, clientLng], { 
+            color: '#e74c3c', 
+            fillColor: '#e74c3c',
+            radius: 8, 
+            fillOpacity: 1 
+        }).addTo(map).bindPopup("Moi");
+    }
+
+    function afficherInterfaceGPS() {
         const container = document.getElementById("zoneCarte");
         
-        if(hasGPS === true){
+        if (hasGPS) {
             container.innerHTML = `
                 <div id="map"></div>
                 <div style="margin-top:10px;text-align:center;">
-                    <button onclick="ouvrirMapsLivreur()" 
-                        style="padding:12px;border:none;border-radius:10px;background:#27ae60;color:white;cursor:pointer;font-weight:bold;width:100%;">
+                    <button onclick="ouvrirMapsLivreur()" class="btn-action">
                         📍 Voir le livreur
                     </button>
-                    <small style="display:block; margin-top:5px; color:gray;">
-                        🔄 Cliquez pour voir sa position actuelle
+                    <small style="display:block; margin-top:5px; color:#666;">
+                        🔄 Cliquez pour voir sa position exacte sur Google Maps
                     </small>
                 </div>
             `;
             initMap();
         } else {
             container.innerHTML = `
-                <div style="background:white;padding:20px;border-radius:15px;text-align:center;margin-top:15px;box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
-                    <h3>📍 Suivi limité</h3>
-                    <p>Vous pouvez toujours voir la position du livreur.</p>
-                    <button onclick="ouvrirMapsLivreur()" 
-                        style="padding:12px;border:none;border-radius:10px;background:#27ae60;color:white;font-weight:bold;cursor:pointer;width:100%;">
-                        📍 Voir le livreur
+                <div style="background:white; padding:20px; border-radius:16px; text-align:center; margin-top:15px; box-shadow:0 4px 15px rgba(0,0,0,0.08);">
+                    <h3 style="margin-top:0;">📍 Suivi GPS restreint</h3>
+                    <p style="color:#666; font-size:14px;">Votre adresse précise n'est pas partagée sur la carte.</p>
+                    <button onclick="ouvrirMapsLivreur()" class="btn-action">
+                        📍 Localiser le livreur
                     </button>
-                    <br><br>
-                    <button onclick="envoyerPosition()" 
-                        style="padding:10px;border:none;border-radius:10px;background:#ff6b00;color:white;cursor:pointer;width:100%;">
-                        📍 Partager ma position (optionnel)
+                    <button onclick="envoyerPosition()" style="margin-top:10px; padding:12px; border:none; border-radius:12px; background:#ff6b00; color:white; font-weight:bold; cursor:pointer; width:100%;">
+                        📍 Partager ma position exacte
                     </button>
                 </div>
             `;
         }
     }
 
-    let hornPlayed = false;
-    function playHorn() {
-        if (hornPlayed) return;
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const oscillator = audioCtx.createOscillator();
-        const gainNode = audioCtx.createGain();
-        oscillator.type = 'square';
-        oscillator.frequency.setValueAtTime(440, audioCtx.currentTime);
-        oscillator.connect(gainNode);
-        gainNode.connect(audioCtx.destination);
-        oscillator.start();
-        gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 1);
-        oscillator.stop(audioCtx.currentTime + 1);
-        hornPlayed = true;
-    }
-
-    document.addEventListener('click', () => { hornPlayed = false; }, { once: true });
-
-    let map, marker, routeLine, lastPos = null;
-
-    function initMap(){
-        map = L.map('map', { zoomControl: false }).setView([clientLat, clientLng], 15);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-
-        L.circleMarker([clientLat, clientLng], { color: '#e74c3c', radius: 8, fillOpacity: 1 }).addTo(map)
-         .bindPopup("Moi").openPopup();
-    }
-
     const bikeSvg = `
         <svg width="40" height="40" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
             <circle cx="50" cy="50" r="45" fill="white" stroke="#27ae60" stroke-width="5"/>
-            <text x="50%" y="55%" dominant-baseline="middle" text-anchor="middle" font-size="50">🏍️</text>
+            <text x="50%" y="55%" dominant-baseline="middle" text-anchor="middle" font-size="45">🏍️</text>
         </svg>`;
 
     function getAngle(start, end) {
@@ -409,14 +466,15 @@
         } else {
             marker.setLatLng(newPos);
             const el = document.getElementById('bike-rot');
-            if(el) el.style.transform = `rotate(${rotation}deg)`;
+            if (el) el.style.transform = `rotate(${rotation}deg)`;
         }
         lastPos = newPos;
     }
 
     async function updateView(livLat, livLng) {
+        if (!map) return;
         const bounds = L.latLngBounds([[clientLat, clientLng], [livLat, livLng]]);
-        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
+        map.fitBounds(bounds, { padding: [40, 40], maxZoom: 16 });
 
         const url = `https://router.project-osrm.org/route/v1/driving/${livLng},${livLat};${clientLng},${clientLat}?overview=full&geometries=geojson`;
         try {
@@ -425,24 +483,54 @@
             if (data.routes && data.routes[0]) {
                 const coords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
                 if (routeLine) map.removeLayer(routeLine);
-                routeLine = L.polyline(coords, { color: '#27ae60', weight: 5, dashArray: '10, 10', opacity: 0.7 }).addTo(map);
+                routeLine = L.polyline(coords, { color: '#27ae60', weight: 5, dashArray: '8, 8', opacity: 0.8 }).addTo(map);
             }
-        } catch (e) { console.error(e); }
+        } catch (e) {
+            console.warn("Calcul d'itinéraire indisponible", e);
+        }
     }
 
-    // --- SOCKET POSITION ---
+    // --- NOTIFICATION SONORE SÉCURISÉE ---
+    function playHorn() {
+        if (hornPlayed) return;
+        try {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            
+            oscillator.type = 'square';
+            oscillator.frequency.setValueAtTime(440, audioCtx.currentTime);
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            oscillator.start();
+            gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.8);
+            oscillator.stop(audioCtx.currentTime + 0.8);
+            
+            hornPlayed = true;
+        } catch(e) { console.error("Audio bloqué", e); }
+    }
+
+    document.addEventListener('click', () => { hornPlayed = false; }, { once: true });
+
+    // --- SOCKET REAL-TIME ---
     socket.on("connect", () => {
         socket.emit("join_tracking", { tracking: trackingId });
     });
 
     socket.on("position_update", async (data) => {
-        if (data.tracking !== trackingId) return;
+        if (!data || data.tracking !== trackingId) return;
         const { lat, lng, statut, livreur_nom, livreur_tel, temps_restant, vitesse, distance_restante } = data;
         
         livreurLat = lat;
         livreurLng = lng;
 
-        if(hasGPS && map) {
+        if (hasGPS && map) {
             animateMarker(lat, lng);
             await updateView(lat, lng);
         }
@@ -452,7 +540,7 @@
             playHorn();
         }
 
-        let statutMsg = statut === "arrive" ? "📍 Devant chez vous !" : (distance_restante < 0.3 ? "🔥 Presque là !" : "🚀 En route");
+        const statutMsg = statut === "arrive" ? "📍 Devant chez vous !" : (distance_restante < 0.3 ? "🔥 Presque arrivé !" : "🚀 En route");
 
         document.getElementById("infoLivreur").innerHTML = `
             <div class="live-card">
@@ -468,19 +556,19 @@
                     </div>
                 </div>
                 <div style="margin-top:10px; font-weight:bold;">
-                    📞 <a href="tel:${livreur_tel}" style="color:#27ae60; text-decoration:none;">${livreur_tel || '--'}</a>
+                    📞 <a href="tel:${livreur_tel}" style="color:var(--primary-color); text-decoration:none;">${livreur_tel || '--'}</a>
                 </div>
                 <div class="live-stats">
                     <div class="stat-box">
-                        <div class="stat-value">${temps_restant || "--"}</div>
+                        <div class="stat-value">${temps_restant ?? "--"}</div>
                         <div class="stat-label">min</div>
                     </div>
                     <div class="stat-box" style="border-left:1px solid #ddd; border-right:1px solid #ddd;">
-                        <div class="stat-value">${distance_restante || "--"}</div>
+                        <div class="stat-value">${distance_restante ?? "--"}</div>
                         <div class="stat-label">km</div>
                     </div>
                     <div class="stat-box">
-                        <div class="stat-value">${vitesse || "--"}</div>
+                        <div class="stat-value">${vitesse ?? "--"}</div>
                         <div class="stat-label">km/h</div>
                     </div>
                 </div>
@@ -488,39 +576,54 @@
         `;
     });
 
-    function envoyerPosition(){
-        if(navigator.geolocation){
-            navigator.geolocation.getCurrentPosition(pos=>{
-                let gps = pos.coords.latitude + "," + pos.coords.longitude;
-                fetch("/api/commande/update_gps",{
-                    method:"POST",
-                    headers:{ "Content-Type":"application/json" },
+    function envoyerPosition() {
+        if (!navigator.geolocation) {
+            alert("La géolocalisation n'est pas supportée par votre navigateur.");
+            return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+            pos => {
+                const gps = `${pos.coords.latitude},${pos.coords.longitude}`;
+                fetch("/api/commande/update_gps", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ tracking: trackingId, gps: gps })
                 })
-                .then(r=>r.json())
-                .then(r=>{
-                    if(r.success){
-                        alert("Position envoyée ✅");
+                .then(r => r.json())
+                .then(r => {
+                    if (r.success) {
+                        alert("Position mise à jour ✅");
                         location.reload();
+                    } else {
+                        alert("Échec de mise à jour.");
                     }
                 });
-            });
+            },
+            () => alert("Impossible d'accéder à votre position."),
+            { enableHighAccuracy: true }
+        );
+    }
+
+    function ouvrirMapsLivreur() {
+        if (livreurLat && livreurLng) {
+            window.open(`https://www.google.com/maps?q=${livreurLat},${livreurLng}`, '_blank');
         } else {
-            alert("La géolocalisation n'est pas supportée.");
+            alert("Position du livreur en attente de synchronisation...");
         }
     }
 
-    function ouvrirMapsLivreur(){
-        if(livreurLat && livreurLng){
-            window.open(`https://www.google.com/maps?q=${livreurLat},${livreurLng}`);
-        } else {
-            alert("Position du livreur indisponible pour le moment...");
-        }
+    // Gestion du clavier mobile pour éviter le chevauchement du champ texte
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', () => {
+            const chatBox = document.getElementById('chatBox');
+            chatBox.style.bottom = `${window.innerHeight - window.visualViewport.height}px`;
+        });
     }
 
-    // LANCEMENT INITIAL
-    afficherInterfaceGPS();
+    // Initialisation
     window.addEventListener("load", () => {
+        afficherInterfaceGPS();
         chargerHistorique();
     });
 </script>
