@@ -376,6 +376,7 @@ def commander():
         return jsonify({"success": False, "message": "Erreur interne du serveur"}), 500
 
 
+@csrf.exempt  # ⬅️ Ajout : exempte cette route de la protection CSRF (API JSON appelée via fetch)
 @app.route("/api/relancer-paiement", methods=["POST"])
 def relancer_paiement():
     import requests
