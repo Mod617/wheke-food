@@ -13,6 +13,10 @@ class Admin(UserMixin, db.Model):
     password = db.Column(db.String(200), nullable=False)
     role = db.Column(db.String(50), default="admin")
 
+    # 🔒 Identification unique de session
+    def get_id(self):
+        return f"admin_{self.id}"
+
 
 # =========================
 # LIVREUR
@@ -38,6 +42,10 @@ class Livreur(UserMixin, db.Model):
 
     livraisons = db.relationship("Livraison", backref="livreur", lazy=True)
     avis = db.relationship("Avis", backref="livreur", lazy=True)
+
+    # 🔒 Identification unique de session
+    def get_id(self):
+        return f"livreur_{self.id}"
 
 
 # =========================
@@ -93,9 +101,6 @@ class Plat(db.Model):
 # COMMANDE
 # =========================
 
-# =========================
-# COMMANDE
-# =========================
 class Commande(db.Model):
     id = db.Column(db.Integer, primary_key=True)
 

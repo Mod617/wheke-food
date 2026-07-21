@@ -134,12 +134,29 @@ with app.app_context():
 @login_manager.user_loader
 def load_user(user_id):
     from models import Admin, Livreur
-    # ✅ On vérifie d'abord si la session appartient à un Administrateur
-    admin = db.session.get(Admin, int(user_id))
-    if admin:
-        return admin
-    # ✅ Sinon, on charge le Livreur
-    return db.session.get(Livreur, int(user_id))
+    
+    # 🔒 Identification explicite basée sur le préfixe
+    if isinstance(user_id, str):
+        if user_id.startswith("admin_"):
+            try:
+                return db.session.get(Admin, int(user_id.replace("admin_", "")))
+            except ValueError:
+                return None
+        elif user_id.startswith("livreur_"):
+            try:
+                return db.session.get(Livreur, int(user_id.replace("livreur_", "")))
+            except ValueError:
+                return None
+
+    # Fallback pour rétabli la rétrocompatibilité (si l'ID transmis est un entier simple)
+    try:
+        uid = int(user_id)
+        admin = db.session.get(Admin, uid)
+        if admin:
+            return admin
+        return db.session.get(Livreur, uid)
+    except (ValueError, TypeError):
+        return None
 
 # =========================
 # ROUTES
