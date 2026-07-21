@@ -497,8 +497,14 @@ def admin_login():
             logout_user()
 
     if request.method == "POST":
-        username = request.form["username"]
-        password = request.form["password"]
+        # 🛡️ VALIDATION DES ENTRÉES UTILISATEUR (CWE-20)
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "")
+
+        # Vérification des champs obligatoires et longueurs limites de sécurité
+        if not username or not password or len(username) > 100 or len(password) > 256:
+            flash("Nom d'utilisateur ou mot de passe incorrect")
+            return render_template("admin_login.html")
 
         admin = models.Admin.query.filter_by(username=username).first()
 
@@ -1233,8 +1239,14 @@ def livreur_login():
             logout_user()
 
     if request.method == "POST":
-        telephone = request.form.get("telephone")
-        password = request.form.get("password")
+        # 🛡️ VALIDATION DES ENTRÉES UTILISATEUR (CWE-20)
+        telephone = request.form.get("telephone", "").strip()
+        password = request.form.get("password", "")
+
+        # Vérification des champs obligatoires et longueurs limites de sécurité
+        if not telephone or not password or len(telephone) > 30 or len(password) > 256:
+            flash("Identifiants invalides ❌")
+            return render_template("livreur_login.html")
 
         livreur = models.Livreur.query.filter_by(telephone=telephone).first()
 

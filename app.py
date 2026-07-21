@@ -12,6 +12,9 @@ import fedapay
 # Importation des extensions
 from extensions import db, login_manager, socketio
 
+# Importation du module de protection CSRF (Flask-WTF)
+from flask_wtf.csrf import CSRFProtect
+
 # Configuration de base
 from werkzeug.utils import secure_filename
 from flask_limiter import Limiter
@@ -33,13 +36,18 @@ if not ADMIN_PASSWORD:
 
 app = Flask(__name__)
 
+# =====================================================================
+# 🛡️ PROTECTION CSRF (AUDIT SÉCURITÉ N°9 - OWASP Top 10 A01:2021)
+# =====================================================================
+csrf = CSRFProtect(app)
+
 # =========================
 # CONFIGURATION
 # =========================
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
-# SECRET_KEY obligatoire pour Flask-Login / sessions
+# SECRET_KEY obligatoire pour Flask-Login / sessions / jetons CSRF
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY") or os.urandom(24).hex()
 
 # --- CONFIGURATION FEDAPAY (Standard API) ---
