@@ -134,8 +134,12 @@ with app.app_context():
 @login_manager.user_loader
 def load_user(user_id):
     from models import Admin, Livreur
-    user = db.session.get(Livreur, int(user_id))
-    return user or db.session.get(Admin, int(user_id))
+    # ✅ On vérifie d'abord si la session appartient à un Administrateur
+    admin = db.session.get(Admin, int(user_id))
+    if admin:
+        return admin
+    # ✅ Sinon, on charge le Livreur
+    return db.session.get(Livreur, int(user_id))
 
 # =========================
 # ROUTES
