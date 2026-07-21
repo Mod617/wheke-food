@@ -563,6 +563,15 @@ def admin_dashboard():
 @app.route("/admin/add_met", methods=["POST"])
 @login_required
 def add_met():
+    # --- CONTRÔLE D'ACCÈS EXPLICITE (AUDIT SÉCURITÉ N°3) ---
+    # On vérifie que l'utilisateur connecté est bien un Admin et non un Livreur
+    from flask_login import current_user
+    import models
+    
+    if not isinstance(current_user, models.Admin):
+        abort(403)
+    # -------------------------------------------------------
+
     nom = request.form.get("nom")
     categorie_name = request.form.get("categorie_name")
     categorie_id = CATEGORIES.get(categorie_name)
