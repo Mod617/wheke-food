@@ -4,42 +4,42 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Finaliser commande - WHÉKÉ FOOD</title>
-
     <link rel="stylesheet" href="/static/style.css">
 
     <style>
         :root {
             --primary: #ff6b00;
-            --primary-hover: #e65c00;
-            --bg-color: #f8f9fa;
-            --surface: #ffffff;
-            --text-main: #1f2937;
-            --text-muted: #6b7280;
-            --border: #e5e7eb;
+            --primary-hover: #e05e00;
+            --bg-color: #0f172a;
+            --surface: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: #334155;
             --radius: 12px;
-            --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
-            --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.08);
+            --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
         }
 
         * {
             box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
         }
 
         body {
-            margin: 0;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             background: var(--bg-color);
             color: var(--text-main);
             line-height: 1.5;
+            padding-bottom: 40px;
         }
 
         header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 1rem 1.25rem;
+            padding: 0.8rem 1.25rem;
             background: var(--surface);
-            box-shadow: var(--shadow-sm);
+            border-bottom: 1px solid var(--border);
             position: sticky;
             top: 0;
             z-index: 100;
@@ -55,14 +55,14 @@
             height: 40px;
             width: 40px;
             object-fit: cover;
-            border-radius: 8px;
+            border-radius: 50%;
+            border: 2px solid var(--primary);
         }
 
         .logo h2 {
-            margin: 0;
             font-size: 1.15rem;
-            font-weight: 700;
-            letter-spacing: -0.02em;
+            font-weight: 800;
+            color: #ffffff;
         }
 
         .btn-back {
@@ -74,7 +74,7 @@
         }
 
         .btn-back:hover {
-            color: var(--text-main);
+            color: #ffffff;
         }
 
         .container {
@@ -93,9 +93,10 @@
 
         h2.title {
             text-align: center;
-            margin: 0 0 1.25rem 0;
+            margin-bottom: 1.25rem;
             font-size: 1.35rem;
             font-weight: 700;
+            color: #ffffff;
         }
 
         .form-group {
@@ -116,7 +117,7 @@
             border-radius: 8px;
             border: 1px solid var(--border);
             font-size: 0.95rem;
-            background-color: var(--surface);
+            background-color: #0f172a;
             color: var(--text-main);
             transition: border-color 0.2s ease;
             outline: none;
@@ -134,7 +135,7 @@
             background: var(--primary);
             color: white;
             font-size: 1rem;
-            font-weight: 600;
+            font-weight: 700;
             cursor: pointer;
             transition: background 0.2s ease;
             display: inline-flex;
@@ -153,18 +154,19 @@
         }
 
         .btn-secondary {
-            background: #f3f4f6;
+            background: #0f172a;
             color: var(--text-main);
             border: 1px solid var(--border);
             margin-bottom: 1rem;
         }
 
         .btn-secondary:hover {
-            background: #e5e7eb;
+            background: #1e293b;
+            border-color: var(--text-muted);
         }
 
         .panier-box {
-            background: #f9fafb;
+            background: #0f172a;
             border: 1px solid var(--border);
             padding: 1rem;
             border-radius: 8px;
@@ -193,17 +195,18 @@
             padding-top: 0.75rem;
             border-top: 2px solid var(--border);
             font-size: 1.05rem;
+            color: var(--primary);
         }
 
         #boxPrix {
             margin: 1rem 0;
-            background: #fff7ed;
-            border: 1px solid #ffedd5;
-            color: #9a3412;
+            background: rgba(255, 107, 0, 0.1);
+            border: 1px solid var(--primary);
+            color: #f8fafc;
             padding: 0.85rem;
             border-radius: 8px;
             font-size: 0.95rem;
-            line-height: 1.4;
+            line-height: 1.5;
         }
 
         /* DROPDOWN CUSTOM */
@@ -216,7 +219,8 @@
             padding: 0.75rem 1rem;
             border: 1px solid var(--border);
             border-radius: 8px;
-            background: var(--surface);
+            background: #0f172a;
+            color: var(--text-main);
             cursor: pointer;
             display: flex;
             justify-content: space-between;
@@ -236,7 +240,7 @@
             top: calc(100% + 4px);
             left: 0;
             right: 0;
-            background: var(--surface);
+            background: #1e293b;
             border-radius: 8px;
             box-shadow: var(--shadow-lg);
             border: 1px solid var(--border);
@@ -264,6 +268,7 @@
             cursor: pointer;
             border-bottom: 1px solid var(--border);
             font-size: 0.9rem;
+            color: var(--text-main);
         }
 
         .quartier-item:last-child {
@@ -271,7 +276,8 @@
         }
 
         .quartier-item:hover {
-            background: #f3f4f6;
+            background: #0f172a;
+            color: var(--primary);
         }
     </style>
 </head>
@@ -300,7 +306,7 @@
         <div class="form-group">
             <label for="livraison">Mode de livraison</label>
             <select id="livraison">
-                <option value="">Type de livraison</option>
+                <option value="">-- Choisir le type --</option>
                 <option value="standard">🚚 Standard</option>
                 <option value="express">⚡ Express</option>
             </select>
@@ -321,14 +327,14 @@
         </div>
 
         <div class="form-group">
-            <input type="text" id="quartierLibre" placeholder="Votre quartier (si non listé)">
+            <input type="text" id="quartierLibre" placeholder="Autre quartier (si non listé)">
         </div>
 
         <button type="button" class="btn btn-secondary" onclick="envoyerLocalisation()">📍 Utiliser ma position GPS</button>
 
         <div id="boxPrix" style="display: none;"></div>
 
-        <button type="button" class="btn" onclick="envoyerCommande(event)">✅ Commander</button>
+        <button type="button" class="btn" onclick="envoyerCommande(event)">✅ Valider la commande</button>
     </div>
 </div>
 
@@ -336,7 +342,6 @@
 let gps = null;
 let selectedQuartier = "";
 
-// ZONES
 const zonesData = {
     "A": { quartiers:["Sainte Cécile","Ladji","Sikècodji","16 Ampoules","Vossa","Gbejdromede","Gbegamey","Jéricho","Saint Jean","Zongo","Houéyiho","Cadjèhoun","Cocotiers","Haie Vive","Guinkomey","Étoile Rouge"], standard:500, express:800 },
     "B": { quartiers:["Adogleta","Segbeya","Djidjè","Dantokpa","Ganhi","Jonquet","Avakpa","Xwlacodji","Tokpa Hoho","Hindé","Vêdoko","Saint Michel","Enagnon","Akpakpa Centre"], standard:800, express:1000 },
@@ -345,13 +350,11 @@ const zonesData = {
     "E": { quartiers:["Abomey-Calavi Marché","Ouédo","Togba","Pahou","Glo-Djigbé","Sèmè-Kpodji","Zinvié","Akassato","Atrokpocodji"], standard:1500, express:2000 }
 };
 
-// toggle
 function toggleDropdown(){
     let box = document.getElementById("dropdownContent");
     box.classList.toggle("show");
 }
 
-// fermer si clic dehors
 document.addEventListener("click", function(e){
     let dropdown = document.querySelector(".dropdown");
     if(dropdown && !dropdown.contains(e.target)){
@@ -359,7 +362,6 @@ document.addEventListener("click", function(e){
     }
 });
 
-// afficher quartiers
 function afficherQuartiers(filtre=""){
     let container = document.getElementById("quartierList");
     container.innerHTML = "";
@@ -374,14 +376,10 @@ function afficherQuartiers(filtre=""){
                 div.onclick = () => {
                     selectedQuartier = q;
                     document.getElementById("selectedQuartier").innerText = q;
-
-                    // reset champ libre
                     document.getElementById("quartierLibre").value = "";
-
                     document.getElementById("dropdownContent").classList.remove("show");
                     document.getElementById("searchQuartier").value = "";
                     afficherQuartiers();
-
                     calculer();
                 };
 
@@ -391,12 +389,10 @@ function afficherQuartiers(filtre=""){
     }
 }
 
-// recherche
 document.getElementById("searchQuartier").addEventListener("keyup", function(){
     afficherQuartiers(this.value);
 });
 
-// PRIORITÉ AU TEXTE
 document.getElementById("quartierLibre").addEventListener("input", function(){
     if(this.value.trim() !== ""){
         selectedQuartier = "";
@@ -407,24 +403,22 @@ document.getElementById("quartierLibre").addEventListener("input", function(){
 
 afficherQuartiers();
 
-// GPS
 function envoyerLocalisation(){
     if(navigator.geolocation){
         navigator.geolocation.getCurrentPosition(
             pos => {
                 gps = pos.coords.latitude + "," + pos.coords.longitude;
-                alert("Localisation récupérée avec succès ✅");
+                alert("Localisation GPS enregistrée ✅");
             },
             err => {
-                alert("Impossible de récupérer votre position GPS.");
+                alert("Impossible d'obtenir la position GPS.");
             }
         );
     } else {
-        alert("La géolocalisation n'est pas supportée par votre navigateur.");
+        alert("Géolocalisation non supportée par votre navigateur.");
     }
 }
 
-// zone
 function getZone(q){
     for(let z in zonesData){
         if(zonesData[z].quartiers.includes(q)) return z;
@@ -432,14 +426,12 @@ function getZone(q){
     return null;
 }
 
-// calcul
 function calculer(){
     let qSelect = selectedQuartier;
     let qLibre = document.getElementById("quartierLibre").value.trim();
     let l = document.getElementById("livraison").value;
     let boxPrix = document.getElementById("boxPrix");
 
-    // priorité texte
     let q = qLibre || qSelect;
 
     if(!q || !l) {
@@ -451,7 +443,7 @@ function calculer(){
     let zone = getZone(q);
 
     if(!zone){
-        boxPrix.innerHTML = "🚚 Le tarif de livraison sera confirmé lors de la prise en charge de votre commande.";
+        boxPrix.innerHTML = "🚚 Tarif de livraison sur mesure (confirmé par appel/WhatsApp lors du traitement).";
         return;
     }
 
@@ -459,12 +451,11 @@ function calculer(){
     let totalPanier = parseInt(document.getElementById("totalPanier")?.innerText || "0", 10);
     let total = totalPanier + prix;
 
-    boxPrix.innerHTML = `🚚 Livraison : <strong>${prix} FCFA</strong><br>💰 Total : <strong>${total} FCFA</strong>`;
+    boxPrix.innerHTML = `Frais de livraison : <strong>${prix} FCFA</strong><br>Grand Total : <strong style="color: var(--primary); font-size: 1.1rem;">${total} FCFA</strong>`;
 }
 
 document.getElementById("livraison").addEventListener("change", calculer);
 
-// panier
 function afficherPanierCommande(){
     let box = document.getElementById("panierBox");
     let data = JSON.parse(localStorage.getItem("panier") || "[]");
@@ -486,7 +477,7 @@ function afficherPanierCommande(){
         <div class="item">
             ${i.image ? `<img src="${i.image}" style="width:45px;height:45px;border-radius:6px;object-fit:cover;" onerror="this.style.display='none'">` : ''}
             <div style="flex:1;">
-                <div style="font-weight:600; font-size:0.95rem;">${i.nom}</div>
+                <div style="font-weight:600; font-size:0.95rem; color:#ffffff;">${i.nom}</div>
                 <div style="font-size:0.85rem; color: var(--text-muted);">Quantité : ${qte}</div>
             </div>
             <span style="font-weight:600;">${sousTotal} FCFA</span>
@@ -495,13 +486,12 @@ function afficherPanierCommande(){
         total += sousTotal;
     });
 
-    html += `<div class="total">Total Panier : <span id="totalPanier">${total}</span> FCFA</div>`;
+    html += `<div class="total">Sous-total Panier : <span id="totalPanier">${total}</span> FCFA</div>`;
     box.innerHTML = html;
 }
 
 afficherPanierCommande();
 
-// ENVOI
 function envoyerCommande(event) {
     if(event) event.preventDefault();
 
@@ -513,19 +503,19 @@ function envoyerCommande(event) {
     let quartier = qLibre || qSelect;
     let livraison = document.getElementById("livraison").value;
 
-    if(!tel) return alert("📞 Numéro de téléphone requis");
-    if(!livraison) return alert("🚚 Veuillez choisir un type de livraison");
+    if(!tel) return alert("📞 Veuillez entrer votre numéro de téléphone.");
+    if(!livraison) return alert("🚚 Veuillez choisir un mode de livraison.");
     if(!quartier && !gpsLocation) {
-        return alert("📍 Précisez votre quartier ou partagez votre position GPS.");
+        return alert("📍 Précisez votre quartier ou activez votre position GPS.");
     }
 
     let panier = JSON.parse(localStorage.getItem("panier") || "[]");
-    if(panier.length === 0) return alert("🛒 Votre panier est vide");
+    if(panier.length === 0) return alert("🛒 Votre panier est vide.");
 
     const btn = (event && event.target) ? event.target : document.querySelector(".btn:last-child");
     const texteOriginal = btn.innerText;
     btn.disabled = true;
-    btn.innerText = "⏳ Traitement en cours...";
+    btn.innerText = "⏳ Validation en cours...";
 
     fetch("/commander", {
         method: "POST",
@@ -545,14 +535,14 @@ function envoyerCommande(event) {
             localStorage.removeItem("panier");
             window.location.href = r.redirect_url;
         } else {
-            alert("❌ " + (r.message || "Vérifiez vos informations"));
+            alert("❌ " + (r.message || "Erreur lors de la commande."));
             btn.disabled = false;
             btn.innerText = texteOriginal;
         }
     })
     .catch(err => {
         console.error(err);
-        alert("❌ Erreur de connexion au serveur");
+        alert("❌ Erreur de connexion avec le serveur.");
         btn.disabled = false;
         btn.innerText = texteOriginal;
     });

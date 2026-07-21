@@ -286,18 +286,24 @@
 
 <script>
     // --- VARIABLES INITIALISÉES DE MANIÈRE SÉCURISÉE ---
-    const trackingId = {{ commande.tracking_id | tojson }};
-    const commandeStatut = {{ commande.statut | tojson }};
-    
-    {% if commande.gps %}
-        const hasGPS = true;
-        const clientLat = parseFloat({{ commande.gps.split(",")[0] | tojson }});
-        const clientLng = parseFloat({{ commande.gps.split(",")[1] | tojson }});
-    {% else %}
-        const hasGPS = false;
-        const clientLat = 6.37;
-        const clientLng = 2.39;
-    {% endif %}
+    const trackingId = "{{ commande.tracking_id }}";
+    const commandeStatut = "{{ commande.statut }}";
+    const rawGps = "{{ commande.gps if commande.gps else '' }}";
+
+    let hasGPS = false;
+    let clientLat = 6.37;
+    let clientLng = 2.39;
+
+    if (rawGps && rawGps.includes(",")) {
+        const parts = rawGps.split(",");
+        const parsedLat = parseFloat(parts[0]);
+        const parsedLng = parseFloat(parts[1]);
+        if (!isNaN(parsedLat) && !isNaN(parsedLng)) {
+            hasGPS = true;
+            clientLat = parsedLat;
+            clientLng = parsedLng;
+        }
+    }
 
     let livreurLat = null;
     let livreurLng = null;
@@ -307,9 +313,10 @@
 
     const socket = io();
 
-    // --- PAIMENT ---
+    // --- PAIEMENT ---
     function relancerPaiement() {
         const btn = document.getElementById("btnPayer");
+        if (!btn) return;
         btn.innerText = "Chargement...";
         btn.disabled = true;
 
@@ -345,6 +352,7 @@
             .then(res => res.json())
             .then(data => {
                 const box = document.getElementById("messages");
+                if (!box) return;
                 box.innerHTML = "";
                 if (Array.isArray(data)) {
                     data.forEach(msg => afficherMessage(msg.message, msg.sender));
@@ -355,6 +363,7 @@
 
     function afficherMessage(message, sender) {
         const box = document.getElementById("messages");
+        if (!box) return;
         const div = document.createElement("div");
 
         div.className = `msg-bubble ${sender === "client" ? "msg-client" : "msg-other"}`;
@@ -366,6 +375,7 @@
 
     function envoyerMessage() {
         const input = document.getElementById("msgInput");
+        if (!input) return;
         const message = input.value.trim();
 
         if (!message) return;
@@ -379,9 +389,12 @@
         input.value = "";
     }
 
-    document.getElementById("msgInput").addEventListener("keypress", (e) => {
-        if (e.key === "Enter") envoyerMessage();
-    });
+    const msgInput = document.getElementById("msgInput");
+    if (msgInput) {
+        msgInput.addEventListener("keypress", (e) => {
+            if (e.key === "Enter") envoyerMessage();
+        });
+    }
 
     socket.on("receive_message", (data) => {
         if (data && data.message) {
@@ -409,6 +422,7 @@
 
     function afficherInterfaceGPS() {
         const container = document.getElementById("zoneCarte");
+        if (!container) return;
         
         if (hasGPS) {
             container.innerHTML = `
@@ -535,45 +549,48 @@
             await updateView(lat, lng);
         }
 
-        if (distance_restante < 0.3) {
+        if (distance_restante && distance_restante < 0.3) {
             if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
             playHorn();
         }
 
-        const statutMsg = statut === "arrive" ? "📍 Devant chez vous !" : (distance_restante < 0.3 ? "🔥 Presque arrivé !" : "🚀 En route");
+        const statutMsg = statut === "arrive" ? "📍 Devant chez vous !" : ((distance_restante && distance_restante < 0.3) ? "🔥 Presque arrivé !" : "🚀 En route");
 
-        document.getElementById("infoLivreur").innerHTML = `
-            <div class="live-card">
-                <div class="live-header">
-                    <div>
-                        <div class="name">🚴 ${livreur_nom || 'Livreur'}</div>
-                        <small style="color:#666">${statutMsg}</small>
+        const infoBox = document.getElementById("infoLivreur");
+        if (infoBox) {
+            infoBox.innerHTML = `
+                <div class="live-card">
+                    <div class="live-header">
+                        <div>
+                            <div class="name">🚴 ${livreur_nom || 'Livreur'}</div>
+                            <small style="color:#666">${statutMsg}</small>
+                        </div>
+                        <div>
+                            <span class="badge ${(distance_restante && distance_restante < 0.3) ? 'danger' : ((distance_restante && distance_restante < 1) ? 'warning' : '')}">
+                                ${(distance_restante && distance_restante < 0.3) ? 'TRÈS PROCHE' : 'EN ROUTE'}
+                            </span>
+                        </div>
                     </div>
-                    <div>
-                        <span class="badge ${distance_restante < 0.3 ? 'danger' : (distance_restante < 1 ? 'warning' : '')}">
-                            ${distance_restante < 0.3 ? 'TRÈS PROCHE' : 'EN ROUTE'}
-                        </span>
+                    <div style="margin-top:10px; font-weight:bold;">
+                        📞 <a href="tel:${livreur_tel || ''}" style="color:var(--primary-color); text-decoration:none;">${livreur_tel || '--'}</a>
+                    </div>
+                    <div class="live-stats">
+                        <div class="stat-box">
+                            <div class="stat-value">${temps_restant ?? "--"}</div>
+                            <div class="stat-label">min</div>
+                        </div>
+                        <div class="stat-box" style="border-left:1px solid #ddd; border-right:1px solid #ddd;">
+                            <div class="stat-value">${distance_restante ?? "--"}</div>
+                            <div class="stat-label">km</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value">${vitesse ?? "--"}</div>
+                            <div class="stat-label">km/h</div>
+                        </div>
                     </div>
                 </div>
-                <div style="margin-top:10px; font-weight:bold;">
-                    📞 <a href="tel:${livreur_tel}" style="color:var(--primary-color); text-decoration:none;">${livreur_tel || '--'}</a>
-                </div>
-                <div class="live-stats">
-                    <div class="stat-box">
-                        <div class="stat-value">${temps_restant ?? "--"}</div>
-                        <div class="stat-label">min</div>
-                    </div>
-                    <div class="stat-box" style="border-left:1px solid #ddd; border-right:1px solid #ddd;">
-                        <div class="stat-value">${distance_restante ?? "--"}</div>
-                        <div class="stat-label">km</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-value">${vitesse ?? "--"}</div>
-                        <div class="stat-label">km/h</div>
-                    </div>
-                </div>
-            </div>
-        `;
+            `;
+        }
     });
 
     function envoyerPosition() {
@@ -613,11 +630,13 @@
         }
     }
 
-    // Gestion du clavier mobile pour éviter le chevauchement du champ texte
+    // Gestion du clavier mobile
     if (window.visualViewport) {
         window.visualViewport.addEventListener('resize', () => {
             const chatBox = document.getElementById('chatBox');
-            chatBox.style.bottom = `${window.innerHeight - window.visualViewport.height}px`;
+            if (chatBox) {
+                chatBox.style.bottom = `${window.innerHeight - window.visualViewport.height}px`;
+            }
         });
     }
 
