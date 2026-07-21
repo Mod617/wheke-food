@@ -509,8 +509,16 @@ function envoyerCommande(event) {
         return alert("📍 Précisez votre quartier ou activez votre position GPS.");
     }
 
-    let panier = JSON.parse(localStorage.getItem("panier") || "[]");
-    if(panier.length === 0) return alert("🛒 Votre panier est vide.");
+    let rawPanier = JSON.parse(localStorage.getItem("panier") || "[]");
+    if(rawPanier.length === 0) return alert("🛒 Votre panier est vide.");
+
+    // Sécurisation stricte des types (ID en entier, quantité en entier) pour éviter le 400 Bad Request
+    let panier = rawPanier.map(p => ({
+        id: parseInt(p.id, 10),
+        qte: parseInt(p.quantite || p.qte || 1, 10)
+    })).filter(p => !isNaN(p.id) && !isNaN(p.qte));
+
+    if(panier.length === 0) return alert("❌ Erreur : Votre panier contient des articles invalides.");
 
     const btn = (event && event.target) ? event.target : document.querySelector(".btn:last-child");
     const texteOriginal = btn.innerText;
@@ -526,7 +534,7 @@ function envoyerCommande(event) {
             gps: gpsLocation,
             livraison: livraison,
             zone: quartier,
-            panier: panier.map(p => ({ id: p.id, qte: p.quantite || p.qte || 1 }))
+            panier: panier
         })
     })
     .then(r => r.json())
