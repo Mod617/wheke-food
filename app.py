@@ -180,12 +180,23 @@ with app.app_context():
     import routes
 
 # =========================
-# INIT DB + ADMIN
+# INIT DB + AUTO-MIGRATION + ADMIN
 # =========================
 
 with app.app_context():
     from security import hash_password
     db.create_all()
+
+    # 🛠️ AUTO-MIGRATION : Ajout automatique de la colonne manquante dans SQLite si elle n'existe pas
+    try:
+        with db.engine.connect() as conn:
+            conn.execute(db.text("ALTER TABLE message ADD COLUMN livraison_id INTEGER;"))
+            conn.commit()
+            print("✅ Migration SQLite : Colonne 'livraison_id' ajoutée avec succès à la table 'message'.")
+    except Exception as e:
+        # Ignore l'erreur si la colonne existe déjà dans la base
+        pass
+
     admin = models.Admin.query.filter_by(username="Mpenza").first()
     if not admin:
         db.session.add(models.Admin(
