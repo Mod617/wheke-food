@@ -512,11 +512,11 @@ function envoyerCommande(event) {
     let rawPanier = JSON.parse(localStorage.getItem("panier") || "[]");
     if(rawPanier.length === 0) return alert("🛒 Votre panier est vide.");
 
-    // Sécurisation stricte des types (ID en entier, quantité en entier) pour éviter le 400 Bad Request
+    // Conservation du type d'origine de l'ID (évite le plantage si l'ID n'est pas un nombre pur)
     let panier = rawPanier.map(p => ({
-        id: parseInt(p.id, 10),
+        id: p.id,
         qte: parseInt(p.quantite || p.qte || 1, 10)
-    })).filter(p => !isNaN(p.id) && !isNaN(p.qte));
+    })).filter(p => p.id !== undefined && p.id !== null && !isNaN(p.qte));
 
     if(panier.length === 0) return alert("❌ Erreur : Votre panier contient des articles invalides.");
 
