@@ -211,6 +211,7 @@
         <div class="section">
             <h2> Ajouter {{ cat }}</h2>
             <form method="POST" action="/admin/add_met" enctype="multipart/form-data">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <input type="hidden" name="categorie_name" value="{{ cat }}">
                 <input type="text" name="nom" placeholder="Nom {{ cat }}" required>
                 <input type="number" name="prix" placeholder="Prix" required>
@@ -264,6 +265,7 @@
 
                     <div class="met_actions">
                         <form method="POST" action="{{ url_for('edit_met', met_id=met.id) }}" enctype="multipart/form-data">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                             <input type="hidden" name="categorie_name"
                                 value="{% if met.categorie_id == 1 %}Repas{% elif met.categorie_id == 2 %}Dessert{% else %}Jus{% endif %}">
                             <input type="text" name="nom" value="{{ met.nom }}" required>
@@ -287,6 +289,7 @@
                         </form>
 
                         <form method="POST" action="/admin/delete_met/{{ met.id }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                             <button type="submit" onclick="return confirm('Supprimer ce met ?')">Supprimer</button>
                         </form>
                     </div>
@@ -298,6 +301,7 @@
         <div class="section">
             <h2>🚴 Gestion des livreurs</h2>
             <form method="POST" action="/admin/add_livreur">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <input type="text" name="nom" placeholder="Nom du livreur" required>
                 <input type="text" name="telephone" placeholder="Téléphone" required>
                 <input type="password" name="password" placeholder="Mot de passe" required>
@@ -309,6 +313,7 @@
                 <li style="background: #f9f9f9; padding: 10px; border-radius: 8px; margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #eee;">
                     <span><b>{{ l.nom }}</b> ({{ l.telephone }}) - 📦 {{ l.nb_commandes }} en cours</span>
                     <form action="/admin/delete_livreur/{{ l.id }}" method="POST" style="display:inline;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                         <button type="submit" style="color:red; font-size:12px; background:none; border:none; cursor:pointer;"
                             onclick="return confirm('Supprimer ce livreur ?')">Supprimer</button>
                     </form>
@@ -364,6 +369,7 @@
                     <td>
                         {% if c.prix_livraison == 0 or c.statut == 'attente_prix' %}
                             <form method="POST" action="/admin/set_prix/{{ c.id }}" class="inline-form">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                 <input type="number" name="prix" placeholder="Prix" style="width:60px; padding: 5px; border: 1px solid #ff6600; border-radius: 4px;" required>
                                 <button type="submit" style="background: #ff6600; color: white; border: none; padding: 5px 8px; border-radius: 4px; cursor: pointer;">OK</button>
                             </form>
@@ -378,6 +384,7 @@
                                 <b style="color:green;">🚴 {{ c.livreur.nom }}</b>
                             {% else %}
                                 <form method="POST" action="/admin/assign_livreur" class="inline-form">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                     <input type="hidden" name="commande_id" value="{{ c.id }}">
                                     <select name="livreur_id" required style="width:100px;">
                                         <option value="">Livreur...</option>
@@ -395,6 +402,7 @@
                     <td>{{ c.statut }}</td>
                     <td>
                         <form method="POST" action="/admin/delete_commande/{{ c.id }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                             <button type="submit" style="background:#333; font-size:11px; width: 100%; color:white; border:none; padding:5px; border-radius:5px; cursor:pointer;"
                                 onclick="return confirm('Supprimer définitivement cette commande ?');">
                                 ❌ Supprimer
