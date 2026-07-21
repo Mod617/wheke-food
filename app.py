@@ -22,13 +22,10 @@ print("🚀 APPLICATION WHÈKÈ FOOD DÉMARRE")
 # =====================================================================
 # VALIDATION STRICTE DES SECRETS DE PRODUCTION (AUDIT SÉCURITÉ N°1)
 # =====================================================================
-# L'application refuse de démarrer si un secret critique est absent.
-SECRET_KEY = os.environ.get("SECRET_KEY")
+# L'application vérifie la présence des secrets obligatoires.
 FEDAPAY_SECRET = os.environ.get("FEDAPAY_SECRET_KEY")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD")
 
-if not SECRET_KEY:
-    raise RuntimeError("Erreur critique de sécurité : La variable d'environnement 'SECRET_KEY' est manquante.")
 if not FEDAPAY_SECRET:
     raise RuntimeError("Erreur critique de sécurité : La variable d'environnement 'FEDAPAY_SECRET_KEY' est manquante.")
 if not ADMIN_PASSWORD:
@@ -42,7 +39,10 @@ app = Flask(__name__)
 # =========================
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-app.config["SECRET_KEY"] = SECRET_KEY
+
+# SECRET_KEY obligatoire pour Flask-Login / sessions : 
+# Récupérée de l'environnement ou générée de manière sécurisée à la volée
+app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY") or os.urandom(24).hex()
 
 # --- CONFIGURATION FEDAPAY (Standard API) ---
 # Utilise la variable d'environnement définie dans Railway
