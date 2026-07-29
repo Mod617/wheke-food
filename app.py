@@ -188,31 +188,50 @@ with app.app_context():
     import routes
 
 # =========================
-# INIT DB + AUTO-MIGRATION + ADMIN
+# INIT DB + AUTO-MIGRATION DYNAMIQUE + ADMIN
 # =========================
 
 with app.app_context():
     from security import hash_password
     db.create_all()
 
-    # 🛠️ AUTO-MIGRATION : Ajout automatique des colonnes manquantes dans SQLite si elles n'existent pas
+    # 🛠️ AUTO-MIGRATION DYNAMIQUE : Ajoute automatiquement toute colonne manquante
     try:
-        with db.engine.connect() as conn:
-            conn.execute(db.text("ALTER TABLE message ADD COLUMN livraison_id INTEGER;"))
-            conn.commit()
-            print("✅ Migration SQLite : Colonne 'livraison_id' ajoutée avec succès à la table 'message'.")
-    except Exception:
-        # La colonne existe déjà, on poursuit
-        pass
+        from sqlalchemy import inspect
+        inspector = inspect(db.engine)
+        
+        # 1. Verification de la table 'message'
+        if inspector.has_table("message"):
+            columns = [c["name"] for c in inspector.get_columns("message")]
+            if "livraison_id" not in columns:
+                with db.engine.connect() as conn:
+                    conn.execute(db.text("ALTER TABLE message ADD COLUMN livraison_id INTEGER;"))
+                    conn.commit()
+                    print("✅ Migration SQLite : Colonne 'livraison_id' ajoutée à la table 'message'.")
 
-    try:
-        with db.engine.connect() as conn:
-            conn.execute(db.text("ALTER TABLE commande ADD COLUMN fedapay_transaction_id VARCHAR(250);"))
-            conn.commit()
-            print("✅ Migration SQLite : Colonne 'fedapay_transaction_id' ajoutée avec succès à la table 'commande'.")
-    except Exception:
-        # La colonne existe déjà, on poursuit
-        pass
+        # 2. Verification automatique de TOUTES les colonnes de 'commande'
+        if inspector.has_table("commande"):
+            existing_cols = [c["name"] for c in inspector.get_columns("commande")]
+            
+            # Dictionnaire des colonnes potentiellement récentes avec leurs types SQL
+            expected_cols = {
+                "fedapay_transaction_id": "VARCHAR(250)",
+                "derniere_relance": "DATETIME",
+                "livreur_id": "INTEGER",
+                "temps_estime": "VARCHAR(100)",
+                "zone": "VARCHAR(100)",
+                "prix_livraison": "FLOAT"
+            }
+            
+            with db.engine.connect() as conn:
+                for col_name, col_type in expected_cols.items():
+                    if col_name not in existing_cols:
+                        conn.execute(db.text(f"ALTER TABLE commande ADD COLUMN {col_name} {col_type};"))
+                        conn.commit()
+                        print(f"✅ Migration SQLite : Colonne '{col_name}' ajoutée à la table 'commande'.")
+                        
+    except Exception as e:
+        print(f"⚠️ Note auto-migration : {e}")
 
     admin = models.Admin.query.filter_by(username="Mpenza").first()
     if not admin:
