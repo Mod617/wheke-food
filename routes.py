@@ -231,7 +231,6 @@ def accueil():
 # 🚀 NOUVELLE COMMANDE (JSON)
 # =========================
   
-
 @csrf.exempt  # ⬅️ Ajout : exempte cette route de la protection CSRF (c'est une API JSON, pas un formulaire)
 @app.route("/commander", methods=["POST"])
 def commander():
@@ -251,7 +250,7 @@ def commander():
 
     try:
         data = request.get_json()
-        print(f"DEBUG REÇU /commander: {data}")  # <-- Permet de voir le payload exact dans la console
+        print(f"DEBUG REÇU /commander: {data}")
         
         if not data:
             return jsonify({"success": False, "message": "Données JSON manquantes"}), 400
@@ -354,13 +353,18 @@ def commander():
                             "email": "assistancewhekefood@gmail.com",
                             "phone_number": {"number": telephone, "country": "bj"}
                         },
-                        "callback_url": url_for('suivi_commande', tracking=commande.tracking_id, _external=True, _scheme='https')
+                        # ⬅️ CORRIGÉ : pointait vers suivi_commande, maintenant vers valider_paiement_final
+                        "callback_url": url_for('valider_paiement_final', tracking_id=commande.tracking_id, _external=True, _scheme='https')
                     }
                     req = requests.post(f"{base_url}/transactions", json=payload, headers=headers, timeout=10)
                     res = req.json()
                     trans_id = res.get('v1/transaction', {}).get('id') or res.get('id')
 
                     if trans_id:
+                        # ⬅️ NOUVEAU : on lie la transaction à cette commande précise
+                        commande.fedapay_transaction_id = str(trans_id)
+                        db.session.commit()
+
                         token_req = requests.post(f"{base_url}/transactions/{trans_id}/token", json={}, headers=headers, timeout=10)
                         t_data = token_req.json()
                         t_url = t_data.get('v1/token', {}).get('url') or t_data.get('url')
@@ -381,6 +385,7 @@ def commander():
 def relancer_paiement():
     import requests
     import os
+    from datetime import datetime, timedelta
 
     data = request.get_json()
     tracking_id = data.get("tracking_id")
@@ -394,12 +399,17 @@ def relancer_paiement():
     if commande.statut == "recu":
         return jsonify({"success": False, "message": "Cette commande est déjà payée"})
 
+    # ⬅️ NOUVEAU : anti-spam (30 secondes entre 2 relances sur la même commande)
+    if commande.derniere_relance and (datetime.utcnow() - commande.derniere_relance) < timedelta(seconds=30):
+        return jsonify({"success": False, "message": "Veuillez patienter avant de réessayer"}), 429
+    commande.derniere_relance = datetime.utcnow()
+    db.session.commit()
+
     # 2. PRÉPARATION API FEDAPAY
     api_key = os.getenv('FEDAPAY_SECRET_KEY')
     base_url = "https://api.fedapay.com/v1" if "live" in api_key else "https://sandbox-api.fedapay.com/v1"
     headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
     
-    # On utilise le total mis à jour (Plats + Livraison fixée par l'admin)
     payload = {
         "amount": int(commande.total),
         "currency": {"iso": "XOF"},
@@ -424,13 +434,16 @@ def relancer_paiement():
         if not trans_id:
             return jsonify({"success": False, "message": "Erreur FedaPay (ID)"})
 
+        # ⬅️ NOUVEAU : on lie CETTE transaction à CETTE commande
+        commande.fedapay_transaction_id = str(trans_id)
+        db.session.commit()
+
         # B. Générer le token/lien
         token_req = requests.post(f"{base_url}/transactions/{trans_id}/token", json={}, headers=headers)
         token_res = token_req.json()
 
         token_data = token_res.get('v1/token') or token_res
         if token_data and isinstance(token_data, dict) and token_data.get('url'):
-            # Si tout est OK, on s'assure que le statut est bien 'attente_paiement'
             if commande.statut == "attente_prix":
                 commande.statut = "attente_paiement"
                 db.session.commit()
@@ -451,44 +464,53 @@ def valider_paiement_final():
     import requests
     import os
     
-    # 1. ATTENTION : FedaPay renvoie souvent 'id' ou 'transaction_id'
     id_transaction = request.args.get('id') or request.args.get('transaction_id')
     tracking_id = request.args.get('tracking_id')
 
     if not id_transaction or not tracking_id:
         return redirect("/")
 
+    commande = models.Commande.query.filter_by(tracking_id=tracking_id).first()
+    if not commande:
+        return redirect("/")
+
+    # ⬅️ NOUVEAU : vérification CRITIQUE — la transaction doit appartenir à CETTE commande.
+    # Tolérance : si fedapay_transaction_id est encore vide (commande créée avant ce déploiement),
+    # on laisse passer une fois pour ne pas bloquer les paiements en cours. À retirer après quelques jours.
+    if commande.fedapay_transaction_id and commande.fedapay_transaction_id != str(id_transaction):
+        print(f"ALERTE SÉCURITÉ: tentative de validation avec transaction non liée. "
+              f"tracking={tracking_id}, transaction_recue={id_transaction}, "
+              f"transaction_attendue={commande.fedapay_transaction_id}")
+        return redirect(f"/suivi/{tracking_id}?status=failed")
+
     api_key = os.getenv('FEDAPAY_SECRET_KEY') or app.config.get('FEDAPAY_SECRET_KEY')
-    # Forçage de l'URL comme dans la route /commander pour être cohérent
     base_url = "https://sandbox-api.fedapay.com/v1" if "sandbox" in api_key else "https://api.fedapay.com/v1"
 
     headers = {"Authorization": f"Bearer {api_key}"}
 
     try:
-        # Vérification du statut auprès de FedaPay
         req = requests.get(f"{base_url}/transactions/{id_transaction}", headers=headers)
         res = req.json()
         
-        # Extraction sécurisée du statut
         transaction_data = res.get('v1/transaction') or res
         status = transaction_data.get('status')
+        montant_paye = transaction_data.get('amount')
 
-        if status == 'approved':
-            commande = models.Commande.query.filter_by(tracking_id=tracking_id).first()
-            if commande and commande.statut != "recu":
+        # ⬅️ NOUVEAU : double vérification du montant
+        if status == 'approved' and montant_paye == commande.total:
+            if commande.statut != "recu":
                 commande.statut = "recu"
-                # Optionnel: tu peux aussi enregistrer l'ID FedaPay en base si tu as un champ prévu
+                if not commande.fedapay_transaction_id:
+                    commande.fedapay_transaction_id = str(id_transaction)
                 db.session.commit()
             
             return redirect(f"/suivi/{tracking_id}?status=success")
         
-        # Si le paiement a échoué ou est annulé
         return redirect(f"/suivi/{tracking_id}?status=failed")
         
     except Exception as e:
         print(f"Erreur validation : {e}")
         return redirect("/")
-# =========================
 # LOGIN ADMIN
 # =========================
 
@@ -775,8 +797,17 @@ def set_prix(commande_id):
 
     commande = models.Commande.query.get_or_404(commande_id)
 
-    # Récupération du prix de livraison saisi
-    prix_livraison = int(request.form.get("prix", 0))
+    # 🛡️ Récupération et validation du prix de livraison saisi
+    try:
+        prix_livraison = int(request.form.get("prix", 0))
+    except (ValueError, TypeError):
+        flash("Prix invalide ❌")
+        return redirect(url_for("admin_dashboard"))
+
+    # 🛡️ Empêche une valeur négative (erreur de saisie admin)
+    if prix_livraison < 0:
+        flash("Le prix de livraison ne peut pas être négatif ❌")
+        return redirect(url_for("admin_dashboard"))
 
     # 🔥 Calcul du total des plats (sécurité sur les valeurs None)
     items = models.CommandeItem.query.filter_by(commande_id=commande.id).all()
@@ -784,7 +815,6 @@ def set_prix(commande_id):
 
     # 🔥 Mise à jour de la commande
     commande.prix_livraison = prix_livraison
-    commande.total_plats = total_plats  # On s'assure que total_plats est stocké
     commande.total = total_plats + prix_livraison
     
     # TRÈS IMPORTANT : On change le statut pour que le bouton de paiement
@@ -793,6 +823,7 @@ def set_prix(commande_id):
 
     db.session.commit()
 
+    flash("Prix de livraison mis à jour ✅")
     return redirect(url_for("admin_dashboard"))
 
 # =========================
@@ -966,6 +997,13 @@ def update_position():
     livraison = db.session.get(models.Livraison, livraison_id)
 
     if livraison:
+
+        # 🔒 NOUVEAU : vérifier que cette livraison appartient bien au livreur connecté
+        if livraison.livreur_id != current_user.id:
+            return jsonify({
+                "success": False,
+                "error": "Accès refusé"
+            }), 403
 
         commande = db.session.get(models.Commande, livraison.commande_id)
 

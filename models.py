@@ -123,6 +123,10 @@ class Commande(db.Model):
     temps_estime = db.Column(db.Integer, default=25)
     statut = db.Column(db.String(50), default="recu")
 
+    # 🔒 NOUVEAU : sécurité paiement (lie une transaction FedaPay à CETTE commande précise)
+    fedapay_transaction_id = db.Column(db.String(50), nullable=True)
+    derniere_relance = db.Column(db.DateTime, nullable=True)
+
     date = db.Column(db.DateTime, default=datetime.utcnow)
 
     # 🔥 NOUVEAU (IMPORTANT)
