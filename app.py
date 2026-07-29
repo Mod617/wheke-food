@@ -195,14 +195,23 @@ with app.app_context():
     from security import hash_password
     db.create_all()
 
-    # 🛠️ AUTO-MIGRATION : Ajout automatique de la colonne manquante dans SQLite si elle n'existe pas
+    # 🛠️ AUTO-MIGRATION : Ajout automatique des colonnes manquantes dans SQLite si elles n'existent pas
     try:
         with db.engine.connect() as conn:
             conn.execute(db.text("ALTER TABLE message ADD COLUMN livraison_id INTEGER;"))
             conn.commit()
             print("✅ Migration SQLite : Colonne 'livraison_id' ajoutée avec succès à la table 'message'.")
-    except Exception as e:
-        # Ignore l'erreur si la colonne existe déjà dans la base
+    except Exception:
+        # La colonne existe déjà, on poursuit
+        pass
+
+    try:
+        with db.engine.connect() as conn:
+            conn.execute(db.text("ALTER TABLE commande ADD COLUMN fedapay_transaction_id VARCHAR(250);"))
+            conn.commit()
+            print("✅ Migration SQLite : Colonne 'fedapay_transaction_id' ajoutée avec succès à la table 'commande'.")
+    except Exception:
+        # La colonne existe déjà, on poursuit
         pass
 
     admin = models.Admin.query.filter_by(username="Mpenza").first()
