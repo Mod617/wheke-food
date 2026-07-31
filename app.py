@@ -195,7 +195,7 @@ with app.app_context():
     from security import hash_password
     db.create_all()
 
-    # 🔥 1. INITIALISATION AUTOMATIQUE DES CATÉGORIES DE BASE (FIX FOREIGN KEY)
+    # 🔥 1. INITIALISATION AUTOMATIQUE DES CATÉGORIES DE BASE
     try:
         categories_defaut = ['Repas', 'Dessert', 'Jus']
         for cat_nom in categories_defaut:
@@ -213,16 +213,16 @@ with app.app_context():
         from sqlalchemy import inspect
         inspector = inspect(db.engine)
         
-        # Verification de la table 'message'
+        # Vérification de la table 'message'
         if inspector.has_table("message"):
             columns = [c["name"] for c in inspector.get_columns("message")]
             if "livraison_id" not in columns:
                 with db.engine.connect() as conn:
                     conn.execute(db.text("ALTER TABLE message ADD COLUMN livraison_id INTEGER;"))
                     conn.commit()
-                    print("✅ Migration : Colonne 'livraison_id' ajoutée à la table 'message'.")
+                    print("✅ Migration DB : Colonne 'livraison_id' ajoutée à la table 'message'.")
 
-        # Verification automatique de TOUTES les colonnes de 'commande'
+        # Vérification automatique de TOUTES les colonnes de 'commande'
         if inspector.has_table("commande"):
             existing_cols = [c["name"] for c in inspector.get_columns("commande")]
             
@@ -244,7 +244,7 @@ with app.app_context():
                     if col_name not in existing_cols:
                         conn.execute(db.text(f"ALTER TABLE commande ADD COLUMN {col_name} {col_type};"))
                         conn.commit()
-                        print(f"✅ Migration : Colonne '{col_name}' ajoutée à la table 'commande'.")
+                        print(f"✅ Migration DB : Colonne '{col_name}' ajoutée à la table 'commande'.")
                         
     except Exception as e:
         print(f"⚠️ Note auto-migration : {e}")
