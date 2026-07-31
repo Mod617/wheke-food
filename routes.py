@@ -605,22 +605,28 @@ def admin_dashboard():
 @app.route("/admin/add_met", methods=["POST"])
 @login_required
 def add_met():
-    # --- CONTRÔLE D'ACCÈS EXPLICITE (AUDIT SÉCURITÉ N°3) ---
-    # On vérifie que l'utilisateur connecté est bien un Admin et non un Livreur
+    # --- CONTRÔLE D'ACCÈS EXPLICITE ---
     from flask_login import current_user
     import models
     
     if not isinstance(current_user, models.Admin):
         abort(403)
-    # -------------------------------------------------------
+    # ----------------------------------
 
     nom = request.form.get("nom")
     categorie_name = request.form.get("categorie_name")
-    categorie_id = CATEGORIES.get(categorie_name)
+
+    # 🔥 FIX : On récupère ou on crée la catégorie directement dans la BDD
+    cat_obj = models.Categorie.query.filter_by(nom=categorie_name).first()
+    if not cat_obj:
+        cat_obj = models.Categorie(nom=categorie_name)
+        db.session.add(cat_obj)
+        db.session.commit()
+
+    categorie_id = cat_obj.id  # Cet ID est Garanti 100% existant en BDD !
 
     prix = float(request.form.get("prix", 0))
-    promo = request.form.get("promo") or 0
-    promo = int(promo)
+    promo = int(request.form.get("promo") or 0)
 
     jours = ",".join(request.form.getlist("jours"))
     heure_debut = request.form.get("heure_debut")

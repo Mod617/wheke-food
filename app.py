@@ -188,35 +188,51 @@ with app.app_context():
     import routes
 
 # =========================
-# INIT DB + AUTO-MIGRATION DYNAMIQUE + ADMIN
+# INIT DB + AUTO-MIGRATION DYNAMIQUE + CATEGORIES + ADMIN
 # =========================
 
 with app.app_context():
     from security import hash_password
     db.create_all()
 
-    # 🛠️ AUTO-MIGRATION DYNAMIQUE : Ajoute automatiquement toute colonne manquante
+    # 🔥 1. INITIALISATION AUTOMATIQUE DES CATÉGORIES DE BASE (FIX FOREIGN KEY)
+    try:
+        categories_defaut = ['Repas', 'Dessert', 'Jus']
+        for cat_nom in categories_defaut:
+            cat_exists = models.Categorie.query.filter_by(nom=cat_nom).first()
+            if not cat_exists:
+                db.session.add(models.Categorie(nom=cat_nom))
+        db.session.commit()
+        print("✅ Catégories par défaut initialisées avec succès.")
+    except Exception as e:
+        db.session.rollback()
+        print(f"⚠️ Note initialisation catégories : {e}")
+
+    # 🛠️ 2. AUTO-MIGRATION DYNAMIQUE : Ajoute automatiquement toute colonne manquante
     try:
         from sqlalchemy import inspect
         inspector = inspect(db.engine)
         
-        # 1. Verification de la table 'message'
+        # Verification de la table 'message'
         if inspector.has_table("message"):
             columns = [c["name"] for c in inspector.get_columns("message")]
             if "livraison_id" not in columns:
                 with db.engine.connect() as conn:
                     conn.execute(db.text("ALTER TABLE message ADD COLUMN livraison_id INTEGER;"))
                     conn.commit()
-                    print("✅ Migration SQLite : Colonne 'livraison_id' ajoutée à la table 'message'.")
+                    print("✅ Migration : Colonne 'livraison_id' ajoutée à la table 'message'.")
 
-        # 2. Verification automatique de TOUTES les colonnes de 'commande'
+        # Verification automatique de TOUTES les colonnes de 'commande'
         if inspector.has_table("commande"):
             existing_cols = [c["name"] for c in inspector.get_columns("commande")]
             
-            # Dictionnaire des colonnes potentiellement récentes avec leurs types SQL
+            # Compatibilité SQLite & PostgreSQL pour les types
+            is_postgres = db_url and "postgresql" in db_url
+            timestamp_type = "TIMESTAMP" if is_postgres else "DATETIME"
+
             expected_cols = {
                 "fedapay_transaction_id": "VARCHAR(250)",
-                "derniere_relance": "DATETIME",
+                "derniere_relance": timestamp_type,
                 "livreur_id": "INTEGER",
                 "temps_estime": "VARCHAR(100)",
                 "zone": "VARCHAR(100)",
@@ -228,11 +244,12 @@ with app.app_context():
                     if col_name not in existing_cols:
                         conn.execute(db.text(f"ALTER TABLE commande ADD COLUMN {col_name} {col_type};"))
                         conn.commit()
-                        print(f"✅ Migration SQLite : Colonne '{col_name}' ajoutée à la table 'commande'.")
+                        print(f"✅ Migration : Colonne '{col_name}' ajoutée à la table 'commande'.")
                         
     except Exception as e:
         print(f"⚠️ Note auto-migration : {e}")
 
+    # 3. CRÉATION DU SUPER ADMIN PAR DÉFAUT
     admin = models.Admin.query.filter_by(username="Mpenza").first()
     if not admin:
         db.session.add(models.Admin(
