@@ -232,3 +232,17 @@ class Message(db.Model):
     message = db.Column(db.Text, nullable=False)
 
     date = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+# =========================
+# PUSH SUBSCRIPTIONS (Notifications)
+# =========================
+
+class PushSubscription(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+
+    endpoint = db.Column(db.String(500), unique=True, nullable=False)
+    p256dh = db.Column(db.String(300), nullable=False)
+    auth = db.Column(db.String(300), nullable=False)
+
+    date = db.Column(db.DateTime, default=datetime.utcnow)

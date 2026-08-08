@@ -8,6 +8,9 @@ from extensions import db, login_manager, socketio
 
 import models
 
+import json
+from pywebpush import webpush, WebPushException
+
 from security import hash_password, verify_password, check_password
 from flask_login import login_user, login_required, logout_user, current_user
 import os
@@ -602,6 +605,46 @@ def admin_dashboard():
 # AJOUT MET
 # =========================
 
+# =========================
+# NOTIFICATIONS PUSH — ENVOI À TOUS LES ABONNÉS
+# =========================
+
+def envoyer_notification_a_tous(titre, message, url="/"):
+    """Envoie une notification push à tous les clients abonnés."""
+    abonnes = models.PushSubscription.query.all()
+
+    vapid_private_key = os.environ.get("VAPID_PRIVATE_KEY")
+    vapid_claim_email = os.environ.get("VAPID_CLAIM_EMAIL", "mailto:contact@whekefood.com")
+
+    payload = json.dumps({
+        "title": titre,
+        "body": message,
+        "url": url
+    })
+
+    for abonne in abonnes:
+        try:
+            webpush(
+                subscription_info={
+                    "endpoint": abonne.endpoint,
+                    "keys": {
+                        "p256dh": abonne.p256dh,
+                        "auth": abonne.auth
+                    }
+                },
+                data=payload,
+                vapid_private_key=vapid_private_key,
+                vapid_claims={"sub": vapid_claim_email}
+            )
+        except WebPushException as ex:
+            # Abonnement expiré ou invalide (ex: 410 Gone) → on le supprime proprement
+            if ex.response is not None and ex.response.status_code in (404, 410):
+                db.session.delete(abonne)
+                db.session.commit()
+            else:
+                print(f"⚠️ Erreur envoi notification : {ex}")
+
+
 @app.route("/admin/add_met", methods=["POST"])
 @login_required
 def add_met():
@@ -653,6 +696,16 @@ def add_met():
 
     db.session.add(met)
     db.session.commit()
+
+    # 🔔 NOTIFICATION AUTOMATIQUE À TOUS LES CLIENTS ABONNÉS
+    try:
+        envoyer_notification_a_tous(
+            titre="Whèkè Food 🍽️",
+            message=f"Nouveau dans « {cat_obj.nom} » : {nom} !",
+            url="/"
+        )
+    except Exception as e:
+        print(f"⚠️ Erreur lors de l'envoi des notifications : {e}")
 
     flash("Plat ajouté avec succès")
     return redirect(url_for("admin_dashboard"))
@@ -1849,3 +1902,30 @@ def delete_admin(admin_id):
 
     flash("Admin supprimé 🚀")
     return redirect(url_for("admin_list"))
+
+
+@app.route("/api/save-subscription", methods=["POST"])
+@csrf.exempt
+def save_subscription():
+    data = request.get_json()
+
+    if not data or "endpoint" not in data or "keys" not in data:
+        return jsonify({"error": "Données invalides"}), 400
+
+    existing = models.PushSubscription.query.filter_by(endpoint=data["endpoint"]).first()
+    if existing:
+        return jsonify({"status": "already_subscribed"}), 200
+
+    sub = models.PushSubscription(
+        endpoint=data["endpoint"],
+        p256dh=data["keys"]["p256dh"],
+        auth=data["keys"]["auth"]
+    )
+    db.session.add(sub)
+    db.session.commit()
+
+    return jsonify({"status": "subscribed"}), 201
+
+@app.route("/api/vapid-public-key")
+def vapid_public_key():
+    return jsonify({"publicKey": os.environ.get("VAPID_PUBLIC_KEY", "")})        
