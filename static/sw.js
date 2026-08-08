@@ -1,7 +1,15 @@
-self.addEventListener("push", function(event){
+const CACHE_NAME = 'wheke-food-v1';
 
-self.registration.showNotification("Nouvelle commande",{
-body:"Un client vient de commander"
-})
+self.addEventListener('install', (event) => {
+  self.skipWaiting();
+});
 
-})
+self.addEventListener('activate', (event) => {
+  event.waitUntil(self.clients.claim());
+});
+
+self.addEventListener('fetch', (event) => {
+  event.respondWith(
+    fetch(event.request).catch(() => caches.match(event.request))
+  );
+});
