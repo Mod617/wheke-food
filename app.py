@@ -59,6 +59,40 @@ except Exception as e:
     print(f"⚠️ Erreur de configuration FedaPay : {e}")
 # ---------------------------------------------
 
+# =====================================================================
+# 🧾 CONFIGURATION e-MECeF (FACTURATION NORMALISÉE DGI)
+# =====================================================================
+# DÉSACTIVÉ PAR DÉFAUT : tant que EMCF_ENABLED n'est pas "true", l'application
+# se comporte exactement comme avant. La facturation ne doit JAMAIS empêcher
+# un paiement : si la config est incomplète, on désactive au lieu de planter.
+#
+# Variables d'environnement (Railway) :
+#   EMCF_ENABLED    "true" pour activer
+#   EMCF_BASE_URL   test : https://developper.impots.bj/sygmef-emcf/api
+#                   prod : https://sygmef.impots.bj/emcf/api
+#   EMCF_TOKEN      jeton généré dans « Gérer les jetons » (secret : jamais dans le code)
+#   EMCF_TAX_GROUP  groupe de taxe du régime TPS (à confirmer via /api/info/taxGroups)
+#   EMCF_IFU        IFU du vendeur (par défaut : celui de Wheke Food)
+app.config["EMCF_ENABLED"] = os.environ.get("EMCF_ENABLED", "false").strip().lower() == "true"
+app.config["EMCF_BASE_URL"] = (os.environ.get("EMCF_BASE_URL") or "").strip().rstrip("/")
+app.config["EMCF_TOKEN"] = os.environ.get("EMCF_TOKEN")
+app.config["EMCF_TAX_GROUP"] = (os.environ.get("EMCF_TAX_GROUP") or "").strip().upper()
+app.config["EMCF_IFU"] = (os.environ.get("EMCF_IFU") or "0202579907397").strip()
+
+if app.config["EMCF_ENABLED"]:
+    _emcf_manquantes = [
+        k for k in ("EMCF_BASE_URL", "EMCF_TOKEN", "EMCF_TAX_GROUP")
+        if not app.config.get(k)
+    ]
+    if _emcf_manquantes:
+        print(f"⚠️ e-MECeF DÉSACTIVÉ : variables manquantes → {', '.join(_emcf_manquantes)}")
+        app.config["EMCF_ENABLED"] = False
+    else:
+        print(f"🧾 e-MECeF ACTIVÉ → {app.config['EMCF_BASE_URL']}")
+else:
+    print("🧾 e-MECeF désactivé")
+# =====================================================================
+
 # DATABASE
 db_url = os.environ.get("DATABASE_URL")
 if db_url and db_url.startswith("postgres://"):
@@ -77,7 +111,9 @@ app.config["ALLOWED_EXTENSIONS"] = {"png", "jpg", "jpeg", "jfif", "webp"}
 
 @app.after_request
 def add_headers(response):
-    response.headers["Cache-Control"] = "public, max-age=300"
+    # 🧾 setdefault : les routes sensibles (ex: facture, avec IFU et nom du client)
+    # peuvent imposer leur propre "Cache-Control: private, no-store" sans être écrasées.
+    response.headers.setdefault("Cache-Control", "public, max-age=300")
     return response
 
 limiter = Limiter(
@@ -229,6 +265,7 @@ with app.app_context():
             # Compatibilité SQLite & PostgreSQL pour les types
             is_postgres = db_url and "postgresql" in db_url
             timestamp_type = "TIMESTAMP" if is_postgres else "DATETIME"
+            bool_false_type = "BOOLEAN NOT NULL DEFAULT FALSE" if is_postgres else "BOOLEAN NOT NULL DEFAULT 0"
 
             expected_cols = {
                 "fedapay_transaction_id": "VARCHAR(250)",
@@ -236,7 +273,13 @@ with app.app_context():
                 "livreur_id": "INTEGER",
                 "temps_estime": "VARCHAR(100)",
                 "zone": "VARCHAR(100)",
-                "prix_livraison": "FLOAT"
+                "prix_livraison": "FLOAT",
+                # 🧾 FACTURATION e-MECeF
+                "paye": bool_false_type,
+                "date_paiement": timestamp_type,
+                "mode_paiement": "VARCHAR(30)",
+                "client_ifu": "VARCHAR(13)",
+                "client_raison_sociale": "VARCHAR(200)"
             }
             
             with db.engine.connect() as conn:
@@ -245,6 +288,19 @@ with app.app_context():
                         conn.execute(db.text(f"ALTER TABLE commande ADD COLUMN {col_name} {col_type};"))
                         conn.commit()
                         print(f"✅ Migration DB : Colonne '{col_name}' ajoutée à la table 'commande'.")
+
+                        # 🧾 Anciennes commandes déjà payées : on les marque payées UNE FOIS
+                        # (à la création de la colonne) pour qu'elles ne soient jamais
+                        # facturées rétroactivement ni repayées. "assigne" est volontairement
+                        # exclu : un livreur peut être assigné avant le paiement.
+                        if col_name == "paye":
+                            vrai = "TRUE" if is_postgres else "1"
+                            conn.execute(db.text(
+                                f"UPDATE commande SET paye = {vrai} "
+                                "WHERE statut IN ('recu','pris','en_route','arrive','livre','termine');"
+                            ))
+                            conn.commit()
+                            print("✅ Migration DB : anciennes commandes payées marquées 'paye'.")
                         
     except Exception as e:
         print(f"⚠️ Note auto-migration : {e}")
