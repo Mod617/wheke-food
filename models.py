@@ -127,6 +127,18 @@ class Commande(db.Model):
     fedapay_transaction_id = db.Column(db.String(50), nullable=True)
     derniere_relance = db.Column(db.DateTime, nullable=True)
 
+    # 💳 NOUVEAU (FACTURATION) : état du paiement, indépendant du statut logistique.
+    # "statut" mélange paiement ET livraison (recu → assigne → pris → livre...),
+    # on ne peut donc plus savoir si une commande a été payée une fois qu'elle avance.
+    paye = db.Column(db.Boolean, nullable=False, default=False)
+    date_paiement = db.Column(db.DateTime, nullable=True)
+    mode_paiement = db.Column(db.String(30), nullable=True)  # ex: mtn, moov, card (renvoyé par FedaPay)
+
+    # 🧾 NOUVEAU (FACTURATION) : infos saisies par le client à la commande (optionnelles)
+    # L'IFU béninois compte 13 chiffres.
+    client_ifu = db.Column(db.String(13), nullable=True)
+    client_raison_sociale = db.Column(db.String(200), nullable=True)
+
     date = db.Column(db.DateTime, default=datetime.utcnow)
 
     # 🔥 NOUVEAU (IMPORTANT)
@@ -246,3 +258,56 @@ class PushSubscription(db.Model):
     auth = db.Column(db.String(300), nullable=False)
 
     date = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+# =========================
+# 🧾 FACTURE NORMALISÉE (e-MECeF / DGI Bénin)
+# =========================
+# Une facture normalisée est un document FISCAL : elle ne se modifie pas et
+# ne se supprime pas. En cas d'erreur, on émet une facture d'avoir (FA) puis
+# une nouvelle facture (FV). C'est pour ça qu'elle a sa propre table, avec un
+# instantané figé des lignes, au lieu d'être des colonnes sur Commande.
+
+class Facture(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+
+    commande_id = db.Column(
+        db.Integer,
+        db.ForeignKey("commande.id"),
+        nullable=False,
+        index=True
+    )
+    commande = db.relationship(
+        "Commande",
+        backref=db.backref("factures", lazy=True)  # pas de cascade : jamais de suppression en chaîne
+    )
+
+    # FV = facture de vente | FA = facture d'avoir (annulation / correction)
+    type_facture = db.Column(db.String(2), nullable=False, default="FV")
+    facture_origine_id = db.Column(db.Integer, db.ForeignKey("facture.id"), nullable=True)
+
+    # en_attente → demandee → confirmee   (ou erreur / annulee)
+    statut = db.Column(db.String(20), nullable=False, default="en_attente", index=True)
+    tentatives = db.Column(db.Integer, nullable=False, default=0)
+    derniere_erreur = db.Column(db.Text, nullable=True)
+
+    # 👤 Client, figé au moment de l'émission
+    client_ifu = db.Column(db.String(13), nullable=True)
+    client_nom = db.Column(db.String(200), nullable=True)
+
+    # 📦 Instantané des lignes facturées (JSON) + total TTC en FCFA
+    lignes_json = db.Column(db.Text, nullable=True)
+    total = db.Column(db.Integer, nullable=True)
+    mode_paiement = db.Column(db.String(30), nullable=True)
+
+    # 📡 Retour de l'API e-MCF
+    uid = db.Column(db.String(64), unique=True, nullable=True)      # identifiant de la demande
+    code_mecef = db.Column(db.String(60), nullable=True)            # code MECeF/DGI
+    nim = db.Column(db.String(30), nullable=True)                   # NIM de l'e-MCF émetteur
+    qr_code = db.Column(db.Text, nullable=True)                     # contenu du QR code
+    compteurs = db.Column(db.String(60), nullable=True)
+    date_mecef = db.Column(db.String(40), nullable=True)            # date/heure telle que renvoyée
+    reponse_brute = db.Column(db.Text, nullable=True)               # JSON de confirmation (audit)
+
+    date_creation = db.Column(db.DateTime, default=datetime.utcnow)
+    date_confirmation = db.Column(db.DateTime, nullable=True)
