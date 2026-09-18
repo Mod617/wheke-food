@@ -167,6 +167,36 @@
             gap: 5px;
             margin: 0;
         }
+
+        /* 🧾 FACTURES NORMALISÉES */
+        .facture-cell {
+            font-size: 12px;
+            min-width: 160px;
+            line-height: 1.5;
+        }
+
+        .facture-cell form {
+            margin: 4px 0 0 0;
+        }
+
+        .facture-cell button {
+            padding: 4px 8px;
+            font-size: 11px;
+        }
+
+        .facture-erreur {
+            color: #c0392b;
+            font-size: 11px;
+            word-break: break-word;
+        }
+
+        .facture-client {
+            margin-top: 6px;
+            padding-top: 6px;
+            border-top: 1px dashed #ddd;
+            color: #555;
+            font-size: 11px;
+        }
     </style>
 </head>
 
@@ -181,11 +211,20 @@
         <div>
             <a href="/admin/admins">👑 Gérer les admins</a>
             <a href="/admin/zones" style="margin-right:15px;">📍 Zones</a>
+            <a href="/admin/emcf" style="margin-right:15px;">🧾 e-MECeF</a>
             <a href="/admin/logout">Déconnexion</a>
         </div>
     </header>
 
     <div class="container">
+
+        {# 🧾 ALERTE : factures normalisées en erreur (à relancer depuis la colonne "Facture") #}
+        {% set nb_factures_erreur = commandes | selectattr('facture_fv') | selectattr('facture_fv.statut', 'equalto', 'erreur') | list | length %}
+        {% if nb_factures_erreur > 0 %}
+        <div style="background:#fdecea; border:1px solid #e74c3c; color:#c0392b; padding:12px 16px; border-radius:10px; margin-bottom:20px; font-weight:bold;">
+            ⚠️ {{ nb_factures_erreur }} facture(s) normalisée(s) en erreur — voir la colonne « Facture » ci-dessous pour réessayer.
+        </div>
+        {% endif %}
 
         <div class="cards">
             <div class="card">
@@ -336,10 +375,12 @@
                     <th>Total</th>
                     <th>Livreur</th>
                     <th>Statut</th>
+                    <th>Facture</th>
                     <th>Actions</th>
                 </tr>
 
                 {% for c in commandes %}
+                {% set f = c.facture_fv %}
                 <tr style="border-bottom:1px solid #ddd; text-align:center;">
                     <td>{{ c.tracking_id }}</td>
                     <td>{{ c.telephone }}</td>
@@ -399,8 +440,54 @@
                             <i style="color: #999; font-size: 11px;">En attente du prix...</i>
                         {% endif %}
                     </td>
-                    <td>{{ c.statut }}</td>
                     <td>
+                        {{ c.statut }}
+                        {% if c.paye %}
+                        <br><span class="badge bg-success">💳 Payé</span>
+                        {% endif %}
+                    </td>
+
+                    {# 🧾 FACTURE NORMALISÉE e-MECeF #}
+                    <td class="facture-cell">
+                        {% if f and f.statut == 'confirmee' %}
+                            <span class="badge bg-success">✅ Confirmée</span><br>
+                            <small>{{ f.code_mecef }}</small><br>
+                            <a href="/admin/facture/{{ f.id }}" target="_blank">📄 Voir</a>
+
+                        {% elif f and f.statut == 'erreur' %}
+                            <span class="badge bg-danger">❌ Erreur</span><br>
+                            <span class="facture-erreur" title="{{ f.derniere_erreur }}">{{ (f.derniere_erreur or 'Erreur inconnue')[:90] }}</span>
+                            <form method="POST" action="/admin/facture/{{ c.id }}/emettre">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                <button type="submit">🔁 Réessayer</button>
+                            </form>
+
+                        {% elif f %}
+                            <span class="badge bg-warning">⏳ En cours</span>
+
+                        {% elif c.paye and c.date_paiement and emcf_actif %}
+                            <span class="badge bg-warning">⏳ Non émise</span>
+                            <form method="POST" action="/admin/facture/{{ c.id }}/emettre">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                <button type="submit">🧾 Générer</button>
+                            </form>
+
+                        {% else %}
+                            <span style="color:#aaa;">—</span>
+                        {% endif %}
+
+                        {% if c.client_ifu %}
+                        <div class="facture-client">
+                            🏢 {{ c.client_raison_sociale }}<br>
+                            IFU {{ c.client_ifu }}
+                        </div>
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        {% if f and f.statut in ['confirmee', 'demandee'] %}
+                            <span title="Une facture normalisée est émise pour cette commande : suppression impossible." style="font-size:11px; color:#777;">🔒 Facturée</span>
+                        {% else %}
                         <form method="POST" action="/admin/delete_commande/{{ c.id }}">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                             <button type="submit" style="background:#333; font-size:11px; width: 100%; color:white; border:none; padding:5px; border-radius:5px; cursor:pointer;"
@@ -408,6 +495,7 @@
                                 ❌ Supprimer
                             </button>
                         </form>
+                        {% endif %}
                     </td>
                 </tr>
                 {% endfor %}
