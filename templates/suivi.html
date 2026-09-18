@@ -78,6 +78,50 @@
 
         .wait { color: #f39c12; font-weight: bold; }
 
+        /* 🧾 FACTURE NORMALISÉE */
+        .facture-box {
+            margin-top: 12px;
+            padding: 12px;
+            border-radius: 10px;
+            background: #f8f9fa;
+            border: 1px solid #e3e6ea;
+            font-size: 0.9em;
+        }
+
+        .facture-box .titre {
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+
+        .btn-facture {
+            display: block;
+            text-align: center;
+            text-decoration: none;
+            margin-top: 10px;
+            padding: 12px;
+            background: var(--primary-color);
+            color: #ffffff;
+            border-radius: 10px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .spinner-mini {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border: 2px solid #ccc;
+            border-top-color: var(--primary-color);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            vertical-align: -1px;
+            margin-right: 6px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
         #map {
             height: 320px;
             width: 100%;
@@ -248,18 +292,42 @@
                 </div>
             </div>
 
-            {% if commande.statut == 'attente_paiement' %}
+            {# 💳 On teste d'abord "payé" : le statut avance (assigne, pris, livre...) après le paiement #}
+            {% if commande.paye or commande.statut == 'recu' %}
+                <div style="background: #e8f8ed; padding: 10px; border-radius: 10px; text-align: center; color: var(--primary-color); font-weight: bold; border: 1px solid #c8e6c9;">
+                    ✅ Paiement effectué avec succès ! <br>
+                    <small style="font-weight: normal; color: #444;">Votre commande est en cours de traitement.</small>
+                </div>
+
+                {# 🧾 FACTURE NORMALISÉE (affichée seulement si la facturation est active pour cette commande) #}
+                {% if facture_attendue %}
+                <div class="facture-box" id="blocFacture">
+                    {% if commande.client_ifu %}
+                    <div style="font-size: 0.85em; color: #666; margin-bottom: 8px;">
+                        Facturé à : <b>{{ commande.client_raison_sociale }}</b> — IFU {{ commande.client_ifu }}
+                    </div>
+                    {% endif %}
+
+                    <div id="facturePrete" {% if not (facture and facture.statut == 'confirmee') %}style="display: none;"{% endif %}>
+                        <div class="titre">🧾 Votre facture normalisée est prête</div>
+                        <small style="color: #666;">Code MECeF/DGI : <span id="factureCode">{{ facture.code_mecef if facture and facture.code_mecef else '' }}</span></small>
+                        <a id="lienFacture" class="btn-facture" href="{{ facture_url or '#' }}" target="_blank" rel="noopener">📄 Voir / télécharger ma facture</a>
+                    </div>
+
+                    <div id="factureEnCours" {% if facture and facture.statut == 'confirmee' %}style="display: none;"{% endif %}>
+                        <span class="spinner-mini" id="factureSpinner"></span>
+                        <b id="factureMsg">Génération de votre facture normalisée...</b>
+                    </div>
+                </div>
+                {% endif %}
+
+            {% elif commande.statut == 'attente_paiement' %}
                 <button onclick="relancerPaiement()" id="btnPayer" class="btn-action">
                     💳 PAYER MA COMMANDE
                 </button>
                 <p style="text-align: center; font-size: 11px; color: #888; margin-top: 8px; margin-bottom: 0;">
                     Le paiement n’a pas abouti. Vous pouvez réessayer en utilisant le bouton ci-dessus 👆.
                 </p>
-            {% elif commande.statut == 'recu' %}
-                <div style="background: #e8f8ed; padding: 10px; border-radius: 10px; text-align: center; color: var(--primary-color); font-weight: bold; border: 1px solid #c8e6c9;">
-                    ✅ Paiement effectué avec succès ! <br>
-                    <small style="font-weight: normal; color: #444;">Votre commande est en cours de traitement.</small>
-                </div>
             {% endif %}
         {% endif %}
     </div>
@@ -344,6 +412,63 @@
 
     if (commandeStatut === 'attente_prix') {
         setTimeout(() => { location.reload(); }, 30000); 
+    }
+
+    // --- 🧾 FACTURE NORMALISÉE ---
+    const factureAttendue = {{ 'true' if facture_attendue else 'false' }};
+    const factureStatutInitial = "{{ facture.statut if facture else 'aucune' }}";
+
+    function afficherFacturePrete(url, code) {
+        const prete = document.getElementById("facturePrete");
+        const enCours = document.getElementById("factureEnCours");
+        if (!prete || !enCours) return;
+
+        if (url) document.getElementById("lienFacture").href = url;
+        document.getElementById("factureCode").textContent = code || "";
+
+        enCours.style.display = "none";
+        prete.style.display = "block";
+    }
+
+    // Facture pas encore prête après ~1 minute (ou en erreur côté serveur) :
+    // message rassurant, sans détail technique. L'admin est prévenu de son côté.
+    function afficherFactureEnRetard() {
+        const spinner = document.getElementById("factureSpinner");
+        const msg = document.getElementById("factureMsg");
+        if (spinner) spinner.style.display = "none";
+        if (msg) {
+            msg.textContent = "Votre facture est en cours de traitement. Elle apparaîtra sur cette page très bientôt : revenez la consulter dans quelques minutes.";
+        }
+    }
+
+    function suivreFacture(essai = 0) {
+        if (essai >= 15) {
+            afficherFactureEnRetard();
+            return;
+        }
+
+        fetch(`/api/facture/${encodeURIComponent(trackingId)}`, { cache: "no-store" })
+            .then(r => r.json())
+            .then(d => {
+                if (d.statut === "confirmee") {
+                    afficherFacturePrete(d.url, d.code_mecef);
+                } else if (d.statut === "erreur") {
+                    afficherFactureEnRetard();
+                } else {
+                    setTimeout(() => suivreFacture(essai + 1), 4000);
+                }
+            })
+            .catch(() => setTimeout(() => suivreFacture(essai + 1), 4000));
+    }
+
+    function initFacture() {
+        if (!factureAttendue || factureStatutInitial === "confirmee") return;
+
+        if (factureStatutInitial === "erreur") {
+            afficherFactureEnRetard();
+        } else {
+            suivreFacture();
+        }
     }
 
     // --- CHAT & SANITISATION ---
@@ -644,6 +769,7 @@
     window.addEventListener("load", () => {
         afficherInterfaceGPS();
         chargerHistorique();
+        initFacture();
     });
 </script>
 </body>
