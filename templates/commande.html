@@ -209,6 +209,51 @@
             line-height: 1.5;
         }
 
+        /* 🧾 FACTURE NORMALISÉE ENTREPRISE (optionnelle) */
+        .facture-card {
+            background: #0f172a;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.9rem 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .facture-toggle {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.6rem;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-main);
+            margin-bottom: 0;
+        }
+
+        .facture-toggle input {
+            width: 18px;
+            height: 18px;
+            margin-top: 2px;
+            accent-color: var(--primary);
+            flex-shrink: 0;
+        }
+
+        #factureBox {
+            display: none;
+            margin-top: 0.85rem;
+            padding-top: 0.85rem;
+            border-top: 1px dashed var(--border);
+        }
+
+        #factureBox.show {
+            display: block;
+        }
+
+        .facture-note {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            line-height: 1.4;
+        }
+
         /* DROPDOWN CUSTOM */
         .dropdown {
             position: relative;
@@ -331,6 +376,28 @@
         </div>
 
         <button type="button" class="btn btn-secondary" onclick="envoyerLocalisation()">📍 Utiliser ma position GPS</button>
+
+        <!-- 🧾 FACTURE NORMALISÉE (optionnelle) -->
+        <div class="facture-card">
+            <label class="facture-toggle" for="veutFacture">
+                <input type="checkbox" id="veutFacture" onchange="toggleFacture()">
+                <span>🧾 J'ai besoin d'une facture normalisée pour mon entreprise</span>
+            </label>
+
+            <div id="factureBox">
+                <div class="form-group">
+                    <label for="clientRaisonSociale">Nom de l'entreprise</label>
+                    <input type="text" id="clientRaisonSociale" maxlength="200" placeholder="ex: SARL Mon Entreprise" autocomplete="organization">
+                </div>
+
+                <div class="form-group">
+                    <label for="clientIfu">IFU de l'entreprise (13 chiffres)</label>
+                    <input type="text" id="clientIfu" maxlength="13" inputmode="numeric" placeholder="ex: 0202XXXXXXXXX" autocomplete="off">
+                </div>
+
+                <p class="facture-note">Facture électronique certifiée par la DGI (e-MECeF), émise après le paiement. ⚠️ Vérifiez bien ces informations : une fois la facture émise, elle ne peut plus être modifiée.</p>
+            </div>
+        </div>
 
         <div id="boxPrix" style="display: none;"></div>
 
@@ -492,6 +559,32 @@ function afficherPanierCommande(){
 
 afficherPanierCommande();
 
+// =========================
+// 🧾 FACTURE NORMALISÉE ENTREPRISE (optionnelle)
+// =========================
+
+function toggleFacture(){
+    let coche = document.getElementById("veutFacture").checked;
+    document.getElementById("factureBox").classList.toggle("show", coche);
+}
+
+// L'IFU ne contient que des chiffres (13 max)
+document.getElementById("clientIfu").addEventListener("input", function(){
+    this.value = this.value.replace(/\D/g, "").slice(0, 13);
+});
+
+// Pré-remplissage pour les clients réguliers (mémorisé uniquement sur cet appareil).
+// La case reste décochée : le client choisit à chaque commande s'il veut une facture entreprise.
+(function preremplirFacture(){
+    try {
+        const saved = JSON.parse(localStorage.getItem("client_facture") || "null");
+        if(saved && saved.ifu && saved.nom){
+            document.getElementById("clientIfu").value = saved.ifu;
+            document.getElementById("clientRaisonSociale").value = saved.nom;
+        }
+    } catch(e) {}
+})();
+
 function envoyerCommande(event) {
     if(event) event.preventDefault();
 
@@ -520,6 +613,19 @@ function envoyerCommande(event) {
 
     if(panier.length === 0) return alert("❌ Erreur : Votre panier contient des articles invalides.");
 
+    // 🧾 Facture entreprise (optionnelle) : validation du format côté navigateur.
+    // Le serveur revalide de toute façon, et la DGI vérifie l'IFU à l'émission.
+    let clientIfu = "";
+    let clientRaisonSociale = "";
+
+    if(document.getElementById("veutFacture").checked){
+        clientIfu = document.getElementById("clientIfu").value.trim();
+        clientRaisonSociale = document.getElementById("clientRaisonSociale").value.trim();
+
+        if(clientRaisonSociale.length < 2) return alert("🧾 Indiquez le nom de l'entreprise pour la facture.");
+        if(!/^\d{13}$/.test(clientIfu)) return alert("🧾 L'IFU doit contenir exactement 13 chiffres.");
+    }
+
     const btn = (event && event.target) ? event.target : document.querySelector(".btn:last-child");
     const texteOriginal = btn.innerText;
     btn.disabled = true;
@@ -534,13 +640,22 @@ function envoyerCommande(event) {
             gps: gpsLocation,
             livraison: livraison,
             zone: quartier,
-            panier: panier
+            panier: panier,
+            client_ifu: clientIfu || null,
+            client_raison_sociale: clientRaisonSociale || null
         })
     })
     .then(r => r.json())
     .then(r => {
         if(r.success && r.redirect_url){
             localStorage.removeItem("panier");
+
+            if(clientIfu){
+                try {
+                    localStorage.setItem("client_facture", JSON.stringify({ ifu: clientIfu, nom: clientRaisonSociale }));
+                } catch(e) {}
+            }
+
             window.location.href = r.redirect_url;
         } else {
             alert("❌ " + (r.message || "Erreur lors de la commande."));
