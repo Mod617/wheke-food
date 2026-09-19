@@ -989,6 +989,136 @@
             .menu { gap: 22px; padding: 10px 14px 24px; }
             .delai-row { grid-template-columns: 1fr; }
         }
+
+        /* AVIS CLIENTS — défilement horizontal lent */
+        .avis-section {
+            position: relative;
+            overflow: hidden;
+            padding: 6px 0 24px;
+        }
+
+        .avis-section::before,
+        .avis-section::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 90px;
+            z-index: 5;
+            pointer-events: none;
+        }
+
+        .avis-section::before {
+            left: 0;
+            background: linear-gradient(90deg, var(--noir) 0%, transparent 100%);
+        }
+
+        .avis-section::after {
+            right: 0;
+            background: linear-gradient(270deg, var(--noir) 0%, transparent 100%);
+        }
+
+        .avis-track {
+            display: flex;
+            gap: 22px;
+            width: max-content;
+            padding: 10px 24px 22px;
+            animation: avisScroll 80s linear infinite;
+        }
+
+        .avis-track:hover {
+            animation-play-state: paused;
+        }
+
+        @keyframes avisScroll {
+            from { transform: translateX(0); }
+            to   { transform: translateX(-50%); }
+        }
+
+        .avis-card {
+            flex: 0 0 340px;
+            max-width: 340px;
+            background: linear-gradient(180deg, var(--noir-3) 0%, var(--noir-2) 100%);
+            border: 1px solid var(--hairline);
+            border-radius: 20px;
+            padding: 24px 24px 22px;
+            box-shadow: var(--shadow-deep);
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            transition: border-color 0.35s var(--ease), transform 0.35s var(--ease);
+        }
+
+        .avis-card:hover {
+            border-color: var(--gold-dim);
+            transform: translateY(-5px);
+        }
+
+        .avis-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .avis-auteur {
+            font-family: var(--font-display);
+            font-weight: 600;
+            font-size: 15px;
+            color: var(--ivory);
+            letter-spacing: 0.2px;
+        }
+
+        .avis-stars {
+            display: flex;
+            gap: 2px;
+            color: var(--gold);
+            flex-shrink: 0;
+        }
+
+        .avis-stars .icon.dim { color: var(--hairline-strong); }
+
+        .avis-texte {
+            font-size: 13px;
+            line-height: 1.75;
+            color: var(--muted);
+            font-style: italic;
+        }
+
+        .avis-reponse {
+            border-left: 2px solid var(--gold-dim);
+            padding: 10px 0 10px 14px;
+            background: rgba(201, 162, 75, 0.05);
+            border-radius: 0 10px 10px 0;
+        }
+
+        .avis-reponse-label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 10.5px;
+            font-weight: 700;
+            letter-spacing: 0.6px;
+            color: var(--gold-soft);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+        }
+
+        .avis-reponse p {
+            font-size: 12.5px;
+            line-height: 1.7;
+            color: var(--muted);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .avis-track { animation: none; }
+        }
+
+        @media screen and (max-width: 480px) {
+            .avis-card { flex-basis: 278px; max-width: 278px; padding: 20px 20px 18px; }
+            .avis-section::before,
+            .avis-section::after { width: 40px; }
+        }
     </style>
 </head>
 
@@ -1405,6 +1535,285 @@
                     </div>
                 </div>
             </div>
+
+        </div>
+    </section>
+
+    <div id="avis" class="section-title">
+        <svg class="icon" width="22" height="22"><use href="#icon-star"></use></svg> Avis clients
+    </div>
+    <div class="section-bar"></div>
+
+    <section class="avis-section" aria-label="Avis de nos clients">
+        <div class="avis-track">
+
+            <!-- 1. Carine H. — 5/5 -->
+            <article class="avis-card">
+                <div class="avis-head">
+                    <span class="avis-auteur">Carine H.</span>
+                    <span class="avis-stars">
+                        <svg class="icon" width="13" height="13"><use href="#icon-star"></use></svg>
+                        <svg class="icon" width="13" height="13"><use href="#icon-star"></use></svg>
+                        <svg class="icon" width="13" height="13"><use href="#icon-star"></use></svg>
+                        <svg class="icon" width="13" height="13"><use href="#icon-star"></use></svg>
+                        <svg class="icon" width="13" height="13"><use href="#icon-star"></use></svg>
+                    </span>
+                </div>
+                <p class="avis-texte">« Commande reçue rapidement, tout était bien emballé et encore brûlant ! La viande était super tendre. C'est devenu mon adresse de référence pour les livraisons du soir. »</p>
+                <div class="avis-reponse">
+                    <div class="avis-reponse-label"><svg class="icon" width="12" height="12"><use href="#icon-check"></use></svg> Réponse de Whéké Food</div>
+                    <p>Merci infiniment Carine ! Régaler nos clients avec des plats bien chauds est notre priorité. À très bientôt pour votre prochaine commande !</p>
+                </div>
+            </article>
+
+            <!-- 2. Lionel A. — 5/5 -->
+            <article class="avis-card">
+                <div class="avis-head">
+                    <span class="avis-auteur">Lionel A.</span>
+                    <span class="avis-stars">
+                        <svg class="icon" width="13" height="13"><use href="#icon-star"></use></svg>
+                        <svg class="icon" width="13" height="13"><use href="#icon-star"></use></svg>
+                        <svg class="icon" width="13" height="13"><use href="#icon-star"></use></svg>
+                        <svg class="icon" width="13" height="13"><use href="#icon-star"></use></svg>
+                        <svg class="icon" width="13" height="13"><use href="#icon-star"></use></svg>
+                    </span>
+                </div>
+                <p class="avis-texte">« Franchement rien à dire, les assaisonnements sont parfaits et les quantités ne trompent pas. On en a clairement pour son argent. »</p>
+                <div class="avis-reponse">
+                    <div class="avis-reponse-label"><svg class="icon" width="12" height="12"><use href="#icon-check"></use></svg> Réponse de Whéké Food</div>
+                    <p>Merci Lionel ! Ça nous fait très plaisir de savoir que la générosité et le goût de nos plats vous ont convaincu.</p>
+                </div>
+            </article>
+
+            <!-- 3. Prisca T. — 5/5 -->
+            <article class="avis-card">
+                <div class="avis-head">
+                    <span class="avis-auteur">Prisca T.</span>
+                    <span class="avis-stars">
+                        <svg class="icon" width="13" height="13"><use href="#icon-star"></use></svg>
+                        <svg class="icon" width="13" height="13"><use href="#icon-star"></use></svg>
+                        <svg class="icon" width="13" height="13"><use href="#icon-star"></use></svg>
+                        <svg class="icon" width="13" height="13"><use href="#icon-star"></use></svg>
+                        <svg class="icon" width="13" height="13"><use href="#icon-star"></use></svg>
+                    </span>
+                </div>
+                <p class="avis-texte">« Première fois que je teste via le nouveau site et l'expérience était fluide. Le livreur était très poli et souriant. »</p>
+                <div class="avis-reponse">
+                    <div class="avis-reponse-label"><svg class="icon" width="12" height="12"><use href="#icon-check"></use></svg> Réponse de Whéké Food</div>
+                    <p>Un grand merci Prisca ! Content que la nouvelle plateforme vous plaise. Nous transmettons le message à notre livreur !</p>
+                </div>
+            </article>
+
+            <!-- 4. Cyrille K. — 4/5 -->
+            <article class="avis-card">
+                <div class="avis-head">
+                    <span class="avis-auteur">Cyrille K.</span>
+                    <span class="avis-stars">
+                        <svg class="icon" width="13" height="13"><use href="#icon-star"></use></svg>
+                        <svg class="icon" width="13" height="13"><use href="#icon-star"></use></svg>
+                        <svg class="icon" width="13" height="13"><use href="#icon-star"></use></svg>
+                        <svg class="icon" width="13" height="13"><use href="#icon-star"></use></svg>
+                        <svg class="icon dim" width="13" height="13"><use href="#icon-star"></use></svg>
+                    </span>
+                </div>
+                <p class="avis-texte">« La nourriture est excellente, rien à dire sur le goût ! Par contre, j'aurais aimé avoir un peu plus de piment à côté comme je l'avais demandé en note. »</p>
+                <div class="avis-reponse">
+                    <div class="avis-reponse-label"><svg class="icon" width="12" height="12"><use href="#icon-check"></use></svg> Réponse de Whéké Food</div>
+                    <p>Merci Cyrille pour votre retour ! Nous sommes désolés pour cet oubli. N'hésitez pas à nous le rappeler lors de votre prochaine commande, nous veillerons à doubler la dose de piment !</p>
+                </div>
+            </article>
+
+            <!-- 5. Florence M. — 4/5 -->
+            <article class="avis-card">
+                <div class="avis-head">
+                    <span class="avis-auteur">Florence M.</span>
+                    <span class="avis-stars">
+                        <svg class="icon" width="13" height="13"><use href="#icon-star"></use></svg>
+                        <svg class="icon" width="13" height="13"><use href="#icon-star"></use></svg>
+                        <svg class="icon" width="13" height="13"><use href="#icon-star"></use></svg>
+                        <svg class="icon" width="13" height="13"><use href="#icon-star"></use></svg>
+                        <svg class="icon dim" width="13" height="13"><use href="#icon-star"></use></svg>
+                    </span>
+                </div>
+                <p class="avis-texte">« Très bon repas dans l'ensemble. Le récipient de sauce s'était un tout petit peu renversé dans le sac pendant le trajet, mais le contenu est resté intact et c'était délicieux. »</p>
+                <div class="avis-reponse">
+                    <div class="avis-reponse-label"><svg class="icon" width="12" height="12"><use href="#icon-check"></use></svg> Réponse de Whéké Food</div>
+                    <p>Merci pour votre honnêteté Florence ! Nous testons actuellement de nouveaux emballages encore plus hermétiques pour éviter ce genre de désagrément durant le transport.</p>
+                </div>
+            </article>
+
+            <!-- 6. Désiré G. — 4/5 -->
+            <article class="avis-card">
+                <div class="avis-head">
+                    <span class="avis-auteur">Désiré G.</span>
+                    <span class="avis-stars">
+                        <svg class="icon" width="13" height="13"><use href="#icon-star"></use></svg>
+                        <svg class="icon" width="13" height="13"><use href="#icon-star"></use></svg>
+                        <svg class="icon" width="13" height="13"><use href="#icon-star"></use></svg>
+                        <svg class="icon" width="13" height="13"><use href="#icon-star"></use></svg>
+                        <svg class="icon dim" width="13" height="13"><use href="#icon-star"></use></svg>
+                    </span>
+                </div>
+                <p class="avis-texte">« Bonnes portions et livraison dans les temps. Un peu plus de sel aurait été parfait pour mon goût personnel, mais la qualité des ingrédients est là. »</p>
+                <div class="avis-reponse">
+                    <div class="avis-reponse-label"><svg class="icon" width="12" height="12"><use href="#icon-check"></use></svg> Réponse de Whéké Food</div>
+                    <p>Merci Désiré ! Nous essayons de doser l'assaisonnement pour convenir au plus grand nombre, mais n'hésitez pas à nous préciser vos préférences en commentaire lors de votre commande !</p>
+                </div>
+            </article>
+
+            <!-- 7. Gérard E. — 4/5 -->
+            <article class="avis-card">
+                <div class="avis-head">
+                    <span class="avis-auteur">Gérard E.</span>
+                    <span class="avis-stars">
+                        <svg class="icon" width="13" height="13"><use href="#icon-star"></use></svg>
+                        <svg class="icon" width="13" height="13"><use href="#icon-star"></use></svg>
+                        <svg class="icon" width="13" height="13"><use href="#icon-star"></use></svg>
+                        <svg class="icon" width="13" height="13"><use href="#icon-star"></use></svg>
+                        <svg class="icon dim" width="13" height="13"><use href="#icon-star"></use></svg>
+                    </span>
+                </div>
+                <p class="avis-texte">« J'ai eu un petit retard de 15 minutes sur ma commande dimanche dernier. Cependant, le service client m'a prévenu au téléphone et le repas était parfait à l'arrivée. »</p>
+                <div class="avis-reponse">
+                    <div class="avis-reponse-label"><svg class="icon" width="12" height="12"><use href="#icon-check"></use></svg> Réponse de Whéké Food</div>
+                    <p>Merci Gérard pour votre patience ! Les heures de pointe du dimanche sont parfois intenses, mais nous faisons toujours de notre mieux pour vous tenir informés. Ravi que le repas ait compensé l'attente !</p>
+                </div>
+            </article>
+
+            <!-- Duplication de la série pour un défilement infini sans coupure -->
+
+            <!-- 1bis -->
+            <article class="avis-card" aria-hidden="true">
+                <div class="avis-head">
+                    <span class="avis-auteur">Carine H.</span>
+                    <span class="avis-stars">
+                        <svg class="icon" width="13" height="13"><use href="#icon-star"></use></svg>
+                        <svg class="icon" width="13" height="13"><use href="#icon-star"></use></svg>
+                        <svg class="icon" width="13" height="13"><use href="#icon-star"></use></svg>
+                        <svg class="icon" width="13" height="13"><use href="#icon-star"></use></svg>
+                        <svg class="icon" width="13" height="13"><use href="#icon-star"></use></svg>
+                    </span>
+                </div>
+                <p class="avis-texte">« Commande reçue rapidement, tout était bien emballé et encore brûlant ! La viande était super tendre. C'est devenu mon adresse de référence pour les livraisons du soir. »</p>
+                <div class="avis-reponse">
+                    <div class="avis-reponse-label"><svg class="icon" width="12" height="12"><use href="#icon-check"></use></svg> Réponse de Whéké Food</div>
+                    <p>Merci infiniment Carine ! Régaler nos clients avec des plats bien chauds est notre priorité. À très bientôt pour votre prochaine commande !</p>
+                </div>
+            </article>
+
+            <!-- 2bis -->
+            <article class="avis-card" aria-hidden="true">
+                <div class="avis-head">
+                    <span class="avis-auteur">Lionel A.</span>
+                    <span class="avis-stars">
+                        <svg class="icon" width="13" height="13"><use href="#icon-star"></use></svg>
+                        <svg class="icon" width="13" height="13"><use href="#icon-star"></use></svg>
+                        <svg class="icon" width="13" height="13"><use href="#icon-star"></use></svg>
+                        <svg class="icon" width="13" height="13"><use href="#icon-star"></use></svg>
+                        <svg class="icon" width="13" height="13"><use href="#icon-star"></use></svg>
+                    </span>
+                </div>
+                <p class="avis-texte">« Franchement rien à dire, les assaisonnements sont parfaits et les quantités ne trompent pas. On en a clairement pour son argent. »</p>
+                <div class="avis-reponse">
+                    <div class="avis-reponse-label"><svg class="icon" width="12" height="12"><use href="#icon-check"></use></svg> Réponse de Whéké Food</div>
+                    <p>Merci Lionel ! Ça nous fait très plaisir de savoir que la générosité et le goût de nos plats vous ont convaincu.</p>
+                </div>
+            </article>
+
+            <!-- 3bis -->
+            <article class="avis-card" aria-hidden="true">
+                <div class="avis-head">
+                    <span class="avis-auteur">Prisca T.</span>
+                    <span class="avis-stars">
+                        <svg class="icon" width="13" height="13"><use href="#icon-star"></use></svg>
+                        <svg class="icon" width="13" height="13"><use href="#icon-star"></use></svg>
+                        <svg class="icon" width="13" height="13"><use href="#icon-star"></use></svg>
+                        <svg class="icon" width="13" height="13"><use href="#icon-star"></use></svg>
+                        <svg class="icon" width="13" height="13"><use href="#icon-star"></use></svg>
+                    </span>
+                </div>
+                <p class="avis-texte">« Première fois que je teste via le nouveau site et l'expérience était fluide. Le livreur était très poli et souriant. »</p>
+                <div class="avis-reponse">
+                    <div class="avis-reponse-label"><svg class="icon" width="12" height="12"><use href="#icon-check"></use></svg> Réponse de Whéké Food</div>
+                    <p>Un grand merci Prisca ! Content que la nouvelle plateforme vous plaise. Nous transmettons le message à notre livreur !</p>
+                </div>
+            </article>
+
+            <!-- 4bis -->
+            <article class="avis-card" aria-hidden="true">
+                <div class="avis-head">
+                    <span class="avis-auteur">Cyrille K.</span>
+                    <span class="avis-stars">
+                        <svg class="icon" width="13" height="13"><use href="#icon-star"></use></svg>
+                        <svg class="icon" width="13" height="13"><use href="#icon-star"></use></svg>
+                        <svg class="icon" width="13" height="13"><use href="#icon-star"></use></svg>
+                        <svg class="icon" width="13" height="13"><use href="#icon-star"></use></svg>
+                        <svg class="icon dim" width="13" height="13"><use href="#icon-star"></use></svg>
+                    </span>
+                </div>
+                <p class="avis-texte">« La nourriture est excellente, rien à dire sur le goût ! Par contre, j'aurais aimé avoir un peu plus de piment à côté comme je l'avais demandé en note. »</p>
+                <div class="avis-reponse">
+                    <div class="avis-reponse-label"><svg class="icon" width="12" height="12"><use href="#icon-check"></use></svg> Réponse de Whéké Food</div>
+                    <p>Merci Cyrille pour votre retour ! Nous sommes désolés pour cet oubli. N'hésitez pas à nous le rappeler lors de votre prochaine commande, nous veillerons à doubler la dose de piment !</p>
+                </div>
+            </article>
+
+            <!-- 5bis -->
+            <article class="avis-card" aria-hidden="true">
+                <div class="avis-head">
+                    <span class="avis-auteur">Florence M.</span>
+                    <span class="avis-stars">
+                        <svg class="icon" width="13" height="13"><use href="#icon-star"></use></svg>
+                        <svg class="icon" width="13" height="13"><use href="#icon-star"></use></svg>
+                        <svg class="icon" width="13" height="13"><use href="#icon-star"></use></svg>
+                        <svg class="icon" width="13" height="13"><use href="#icon-star"></use></svg>
+                        <svg class="icon dim" width="13" height="13"><use href="#icon-star"></use></svg>
+                    </span>
+                </div>
+                <p class="avis-texte">« Très bon repas dans l'ensemble. Le récipient de sauce s'était un tout petit peu renversé dans le sac pendant le trajet, mais le contenu est resté intact et c'était délicieux. »</p>
+                <div class="avis-reponse">
+                    <div class="avis-reponse-label"><svg class="icon" width="12" height="12"><use href="#icon-check"></use></svg> Réponse de Whéké Food</div>
+                    <p>Merci pour votre honnêteté Florence ! Nous testons actuellement de nouveaux emballages encore plus hermétiques pour éviter ce genre de désagrément durant le transport.</p>
+                </div>
+            </article>
+
+            <!-- 6bis -->
+            <article class="avis-card" aria-hidden="true">
+                <div class="avis-head">
+                    <span class="avis-auteur">Désiré G.</span>
+                    <span class="avis-stars">
+                        <svg class="icon" width="13" height="13"><use href="#icon-star"></use></svg>
+                        <svg class="icon" width="13" height="13"><use href="#icon-star"></use></svg>
+                        <svg class="icon" width="13" height="13"><use href="#icon-star"></use></svg>
+                        <svg class="icon" width="13" height="13"><use href="#icon-star"></use></svg>
+                        <svg class="icon dim" width="13" height="13"><use href="#icon-star"></use></svg>
+                    </span>
+                </div>
+                <p class="avis-texte">« Bonnes portions et livraison dans les temps. Un peu plus de sel aurait été parfait pour mon goût personnel, mais la qualité des ingrédients est là. »</p>
+                <div class="avis-reponse">
+                    <div class="avis-reponse-label"><svg class="icon" width="12" height="12"><use href="#icon-check"></use></svg> Réponse de Whéké Food</div>
+                    <p>Merci Désiré ! Nous essayons de doser l'assaisonnement pour convenir au plus grand nombre, mais n'hésitez pas à nous préciser vos préférences en commentaire lors de votre commande !</p>
+                </div>
+            </article>
+
+            <!-- 7bis -->
+            <article class="avis-card" aria-hidden="true">
+                <div class="avis-head">
+                    <span class="avis-auteur">Gérard E.</span>
+                    <span class="avis-stars">
+                        <svg class="icon" width="13" height="13"><use href="#icon-star"></use></svg>
+                        <svg class="icon" width="13" height="13"><use href="#icon-star"></use></svg>
+                        <svg class="icon" width="13" height="13"><use href="#icon-star"></use></svg>
+                        <svg class="icon" width="13" height="13"><use href="#icon-star"></use></svg>
+                        <svg class="icon dim" width="13" height="13"><use href="#icon-star"></use></svg>
+                    </span>
+                </div>
+                <p class="avis-texte">« J'ai eu un petit retard de 15 minutes sur ma commande dimanche dernier. Cependant, le service client m'a prévenu au téléphone et le repas était parfait à l'arrivée. »</p>
+                <div class="avis-reponse">
+                    <div class="avis-reponse-label"><svg class="icon" width="12" height="12"><use href="#icon-check"></use></svg> Réponse de Whéké Food</div>
+                    <p>Merci Gérard pour votre patience ! Les heures de pointe du dimanche sont parfois intenses, mais nous faisons toujours de notre mieux pour vous tenir informés. Ravi que le repas ait compensé l'attente !</p>
+                </div>
+            </article>
 
         </div>
     </section>
