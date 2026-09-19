@@ -47,6 +47,7 @@
         html { scroll-behavior: smooth; }
 
         body {
+            position: relative;
             background:
                 radial-gradient(ellipse 900px 500px at 50% -5%, rgba(201,162,75,0.09) 0%, transparent 60%),
                 radial-gradient(ellipse 700px 500px at 100% 30%, rgba(122,43,60,0.10) 0%, transparent 55%),
@@ -54,6 +55,18 @@
             color: var(--ivory);
             min-height: 100vh;
             padding-bottom: 40px;
+        }
+
+        /* Grain filmique subtil, cohérent sur toute la page */
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            z-index: 3000;
+            pointer-events: none;
+            opacity: 0.035;
+            mix-blend-mode: overlay;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
         }
 
         ::selection { background: var(--gold); color: var(--noir); }
@@ -70,6 +83,12 @@
         input:focus-visible {
             outline: 2px solid var(--gold-bright);
             outline-offset: 3px;
+        }
+
+        .icon {
+            display: inline-block;
+            vertical-align: -3px;
+            flex-shrink: 0;
         }
 
         @media (prefers-reduced-motion: reduce) {
@@ -149,7 +168,7 @@
             letter-spacing: 0.3px;
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 7px;
             transition: border-color 0.25s var(--ease), background 0.25s var(--ease), color 0.25s var(--ease);
         }
 
@@ -190,6 +209,9 @@
 
         .nav-link {
             position: relative;
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
             padding: 9px 20px;
             border: 1px solid var(--hairline);
             border-radius: 999px;
@@ -232,7 +254,7 @@
         .accueil {
             position: relative;
             text-align: center;
-            padding: 58px 20px 54px;
+            padding: 60px 20px 54px;
             background:
                 radial-gradient(ellipse at 50% 0%, rgba(201,162,75,0.10) 0%, transparent 60%),
                 linear-gradient(180deg, #171310 0%, var(--noir) 100%);
@@ -240,12 +262,42 @@
             overflow: hidden;
         }
 
-        .hero-mark {
-            width: 84px;
-            height: 84px;
+        /* Motif géométrique discret, clin d'œil au pagne béninois */
+        .accueil::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            opacity: 0.05;
+            pointer-events: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Cg fill='none' stroke='%23c9a24b' stroke-width='1'%3E%3Cpath d='M32 4 L60 32 L32 60 L4 32 Z'/%3E%3Cpath d='M32 18 L46 32 L32 46 L18 32 Z'/%3E%3C/g%3E%3C/svg%3E");
+            background-size: 64px 64px;
+        }
+
+        .hero-mark-wrap {
+            position: relative;
+            width: 96px;
+            height: 96px;
             margin: 0 auto 18px;
             opacity: 0;
             animation: riseIn 0.8s var(--ease) 0.1s forwards;
+        }
+
+        .hero-mark-wrap::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            border: 1px dashed var(--hairline-strong);
+            animation: slowSpin 48s linear infinite;
+        }
+
+        @keyframes slowSpin {
+            to { transform: rotate(360deg); }
+        }
+
+        .hero-mark {
+            position: absolute;
+            inset: 10px;
         }
 
         .hero-mark .steam {
@@ -324,8 +376,13 @@
             font-weight: 600;
         }
 
+        .feature-chip .icon { color: var(--gold); }
+
         .btn-contact {
             margin-top: 28px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
             padding: 13px 34px;
             border: 1px solid var(--gold);
             border-radius: 999px;
@@ -346,17 +403,69 @@
             box-shadow: 0 10px 26px rgba(201, 162, 75, 0.28);
         }
 
+        /* PILIERS DE MARQUE */
+        .pillars {
+            max-width: 980px;
+            margin: 0 auto;
+            padding: 46px 24px 10px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 28px;
+        }
+
+        .pillar {
+            text-align: center;
+            padding: 0 10px;
+        }
+
+        .pillar .icon-ring {
+            width: 46px;
+            height: 46px;
+            margin: 0 auto 14px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--hairline-strong);
+            color: var(--gold);
+        }
+
+        .pillar h4 {
+            font-family: var(--font-display);
+            font-weight: 600;
+            font-size: 15.5px;
+            color: var(--ivory);
+            margin-bottom: 6px;
+            letter-spacing: 0.2px;
+        }
+
+        .pillar p {
+            font-size: 12.5px;
+            color: var(--muted);
+            line-height: 1.7;
+        }
+
+        @media screen and (max-width: 680px) {
+            .pillars { grid-template-columns: 1fr; gap: 26px; padding-top: 38px; }
+        }
+
         /* TITRES DE SECTION */
         .section-title {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
             text-align: center;
             font-family: var(--font-display);
-            font-size: 26px;
+            font-size: 25px;
             font-weight: 600;
             font-style: italic;
             color: var(--ivory);
             margin-top: 66px;
             letter-spacing: 0.5px;
         }
+
+        .section-title .icon { color: var(--gold); }
 
         .section-bar {
             width: 120px;
@@ -398,6 +507,11 @@
             transition: transform 0.35s var(--ease), border-color 0.35s var(--ease), box-shadow 0.35s var(--ease);
         }
 
+        .plat.signature {
+            border-color: var(--hairline-strong);
+            box-shadow: var(--shadow-deep), 0 0 0 1px rgba(201,162,75,0.12);
+        }
+
         .plat:hover {
             transform: translateY(-6px);
             border-color: var(--gold-dim);
@@ -434,6 +548,25 @@
             height: 100%;
             object-fit: contain;
             border-radius: 50%;
+        }
+
+        /* Ruban "coup de cœur" */
+        .ribbon-signature {
+            position: absolute;
+            top: -12px;
+            left: 12px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 6px 13px;
+            border-radius: 999px;
+            font-size: 10.5px;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+            color: var(--noir);
+            background: linear-gradient(135deg, var(--gold-bright), var(--gold));
+            box-shadow: 0 6px 14px rgba(0,0,0,0.4);
+            z-index: 10;
         }
 
         /* Badges de disponibilité */
@@ -507,6 +640,10 @@
         }
 
         .horaire {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
             font-size: 12px;
             color: var(--muted);
         }
@@ -527,7 +664,9 @@
             border: 1px solid var(--hairline);
             background: var(--noir);
             color: var(--ivory);
-            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             cursor: pointer;
             transition: border-color 0.25s var(--ease), color 0.25s var(--ease);
         }
@@ -599,6 +738,9 @@
         }
 
         .zone-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
             background: rgba(201, 162, 75, 0.10);
             color: var(--gold-soft);
             border: 1px solid var(--gold-dim);
@@ -665,6 +807,9 @@
             position: fixed;
             bottom: 20px;
             right: 20px;
+            display: none;
+            align-items: center;
+            gap: 8px;
             background: linear-gradient(135deg, #2e8b6f, #1f6b54);
             color: white;
             padding: 13px 22px;
@@ -672,7 +817,6 @@
             font-weight: 700;
             font-size: 14px;
             box-shadow: 0 14px 26px rgba(0,0,0,0.5);
-            display: none;
             z-index: 2000;
             border: 1px solid rgba(255,255,255,0.12);
         }
@@ -719,6 +863,9 @@
         }
 
         #panier_popup h3 {
+            display: flex;
+            align-items: center;
+            gap: 8px;
             font-family: var(--font-display);
             font-weight: 600;
             font-size: 19px;
@@ -756,7 +903,7 @@
             background: transparent;
             border: none;
             color: var(--muted);
-            font-size: 18px;
+            display: flex;
             cursor: pointer;
             transition: color 0.2s var(--ease);
         }
@@ -773,7 +920,9 @@
             background: var(--noir-2);
             border: 1px solid var(--hairline);
             color: var(--gold-soft);
-            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             cursor: pointer;
             box-shadow: 0 8px 20px rgba(0,0,0,0.4);
             z-index: 900;
@@ -784,7 +933,7 @@
 
         footer {
             text-align: center;
-            padding: 46px 20px 16px;
+            padding: 50px 20px 18px;
             margin-top: 20px;
             border-top: 1px solid var(--hairline);
             color: var(--muted-2);
@@ -795,22 +944,48 @@
         footer .foot-brand {
             font-family: var(--font-display);
             font-style: italic;
-            font-size: 15px;
+            font-size: 17px;
             color: var(--gold-soft);
-            margin-bottom: 6px;
+            margin-bottom: 14px;
+        }
+
+        .foot-links {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 18px;
+            margin-bottom: 18px;
+        }
+
+        .foot-links button {
+            background: none;
+            border: none;
+            color: var(--muted);
+            font-size: 12.5px;
+            font-weight: 600;
+            cursor: pointer;
+            letter-spacing: 0.3px;
+            transition: color 0.2s var(--ease);
+        }
+
+        .foot-links button:hover { color: var(--gold-soft); }
+
+        footer .copyright {
+            margin-top: 4px;
+            color: var(--muted-2);
         }
 
         /* Wide-screen refinement */
         @media screen and (min-width: 1400px) {
             .menu { max-width: 1360px; gap: 34px; }
             .delivery-section { max-width: 1200px; }
-            .accueil { padding: 74px 20px 64px; }
+            .accueil { padding: 76px 20px 66px; }
         }
 
         @media screen and (max-width: 480px) {
             header { padding: 12px 16px; }
             header h2 { font-size: 16px; letter-spacing: 1px; }
-            .accueil { padding: 44px 16px 38px; }
+            .accueil { padding: 46px 16px 40px; }
             .menu { gap: 22px; padding: 10px 14px 24px; }
             .delai-row { grid-template-columns: 1fr; }
         }
@@ -819,13 +994,67 @@
 
 <body>
 
+    <!-- Sprite d'icônes (aucune émoji : identité graphique cohérente) -->
+    <svg style="display:none" aria-hidden="true">
+        <symbol id="icon-cart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 8h12l-1 12H7L6 8z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/>
+        </symbol>
+        <symbol id="icon-box" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 8l9-4 9 4-9 4-9-4z"/><path d="M3 8v9l9 4 9-4V8"/><path d="M12 12v9"/>
+        </symbol>
+        <symbol id="icon-plate" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 3v6a2 2 0 0 0 2 2v10"/><path d="M6 3v5M9 3v5"/><path d="M17 3c-2 0-3 2.2-3 4.4S15 12 17 12v9"/>
+        </symbol>
+        <symbol id="icon-cake" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 12h16v7H4z"/><path d="M4 12c0-2 2-3 2-5M10 12c0-2 2-3 2-5M16 12c0-2 2-3 2-5"/><path d="M4 16h16"/>
+        </symbol>
+        <symbol id="icon-cup" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M7 8h10l-1 12H8L7 8z"/><path d="M9 8V5h6v3"/><line x1="13" y1="3" x2="13" y2="8"/>
+        </symbol>
+        <symbol id="icon-truck" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 7h11v9H3z"/><path d="M14 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="1.6"/><circle cx="18" cy="18" r="1.6"/>
+        </symbol>
+        <symbol id="icon-mail" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 6h16v12H4z"/><path d="M4 6l8 7 8-7"/>
+        </symbol>
+        <symbol id="icon-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3l7 3v6c0 5-3.5 7.5-7 9-3.5-1.5-7-4-7-9V6l7-3z"/><path d="M9 12l2 2 4-4"/>
+        </symbol>
+        <symbol id="icon-pin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 21s-7-6.5-7-11a7 7 0 0 1 14 0c0 4.5-7 11-7 11z"/><circle cx="12" cy="10" r="2.4"/>
+        </symbol>
+        <symbol id="icon-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+            <line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/>
+        </symbol>
+        <symbol id="icon-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+        </symbol>
+        <symbol id="icon-minus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+            <line x1="5" y1="12" x2="19" y2="12"/>
+        </symbol>
+        <symbol id="icon-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 12l5 5L20 6"/>
+        </symbol>
+        <symbol id="icon-star" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+            <path d="M12 3l2.6 5.9 6.4.6-4.9 4.2 1.5 6.3L12 16.9 6.4 20l1.5-6.3L3 9.5l6.4-.6L12 3z"/>
+        </symbol>
+        <symbol id="icon-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.5 2"/>
+        </symbol>
+        <symbol id="icon-arrow-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="19" x2="12" y2="5"/><path d="M6 11l6-6 6 6"/>
+        </symbol>
+    </svg>
+
     <!-- Fond sombre réactif au clic -->
     <div id="panier_overlay" onclick="fermerPanier()"></div>
 
     <!-- Tiroir du panier -->
     <div id="panier_popup" onclick="event.stopPropagation()">
-        <button class="close-panier" onclick="fermerPanier()">✖</button>
-        <h3>🛒 Votre panier</h3>
+        <button class="close-panier" onclick="fermerPanier()" aria-label="Fermer le panier">
+            <svg class="icon" width="18" height="18"><use href="#icon-close"></use></svg>
+        </button>
+        <h3><svg class="icon" width="20" height="20"><use href="#icon-cart"></use></svg> Votre panier</h3>
         <div id="panier_items" style="max-height: 250px; overflow-y: auto; margin-bottom: 15px;"></div>
         <div style="border-top: 1px solid var(--hairline); padding-top: 15px;">
             <p style="font-weight: bold; font-size: 1.1rem; color: var(--ivory); display: flex; justify-content: space-between;">
@@ -839,7 +1068,9 @@
         </div>
     </div>
 
-    <button id="backToTop" onclick="scrollToTop()" aria-label="Remonter en haut de la page">↑</button>
+    <button id="backToTop" onclick="scrollToTop()" aria-label="Remonter en haut de la page">
+        <svg class="icon" width="18" height="18"><use href="#icon-arrow-up"></use></svg>
+    </button>
 
     <header>
         <div class="logo">
@@ -851,35 +1082,45 @@
         </div>
         <div class="header-actions">
             <button id="panier_btn" class="btn-header" onclick="ouvrirPanier()">
-                🛒 (<span id="panier_count" style="color: var(--gold-soft);">0</span>)
+                <svg class="icon" width="16" height="16"><use href="#icon-cart"></use></svg>
+                (<span id="panier_count" style="color: var(--gold-soft);">0</span>)
             </button>
             <button class="btn-header orders" onclick="voirCommandes()">
-                📦 Mes commandes
+                <svg class="icon" width="16" height="16"><use href="#icon-box"></use></svg>
+                Mes commandes
             </button>
         </div>
     </header>
 
     <nav class="nav-categories" id="navCategories">
-        <button class="nav-link" data-section="repas" onclick="scrollToSection('repas')">🍽️ Repas</button>
-        <button class="nav-link" data-section="desserts" onclick="scrollToSection('desserts')">🍰 Desserts</button>
-        <button class="nav-link" data-section="boissons" onclick="scrollToSection('boissons')">🥤 Boissons</button>
+        <button class="nav-link" data-section="repas" onclick="scrollToSection('repas')">
+            <svg class="icon" width="15" height="15"><use href="#icon-plate"></use></svg> Repas
+        </button>
+        <button class="nav-link" data-section="desserts" onclick="scrollToSection('desserts')">
+            <svg class="icon" width="15" height="15"><use href="#icon-cake"></use></svg> Desserts
+        </button>
+        <button class="nav-link" data-section="boissons" onclick="scrollToSection('boissons')">
+            <svg class="icon" width="15" height="15"><use href="#icon-cup"></use></svg> Boissons
+        </button>
         <button class="nav-link btn-delivery-nav" data-section="livraison" onclick="scrollToSection('livraison')">
-            🚚 Tarifs livraison
+            <svg class="icon" width="15" height="15"><use href="#icon-truck"></use></svg> Tarifs livraison
         </button>
     </nav>
 
     <section class="accueil">
-        <svg class="hero-mark" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <path class="steam s1" d="M40 30 C 38 24, 42 20, 40 14" stroke="#c9a24b" stroke-width="1.6" stroke-linecap="round"/>
-            <path class="steam s2" d="M50 30 C 48 22, 52 18, 50 10" stroke="#c9a24b" stroke-width="1.6" stroke-linecap="round"/>
-            <path class="steam s3" d="M60 30 C 58 24, 62 20, 60 14" stroke="#c9a24b" stroke-width="1.6" stroke-linecap="round"/>
-            <ellipse cx="50" cy="42" rx="34" ry="7" stroke="#c9a24b" stroke-width="1.8"/>
-            <path d="M16 42 C 16 60, 84 60, 84 42" stroke="#c9a24b" stroke-width="1.8"/>
-            <ellipse cx="50" cy="68" rx="38" ry="6" stroke="#8a6f37" stroke-width="1.4"/>
-            <line x1="26" y1="76" x2="26" y2="90" stroke="#c9a24b" stroke-width="1.6" stroke-linecap="round"/>
-            <path d="M23 76 L23 82 M29 76 L29 82 M26 76 L26 82" stroke="#c9a24b" stroke-width="1.2" stroke-linecap="round"/>
-            <path d="M74 76 C 70 78, 70 84, 74 86 L74 90" stroke="#c9a24b" stroke-width="1.6" stroke-linecap="round" fill="none"/>
-        </svg>
+        <div class="hero-mark-wrap">
+            <svg class="hero-mark" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path class="steam s1" d="M40 30 C 38 24, 42 20, 40 14" stroke="#c9a24b" stroke-width="1.6" stroke-linecap="round"/>
+                <path class="steam s2" d="M50 30 C 48 22, 52 18, 50 10" stroke="#c9a24b" stroke-width="1.6" stroke-linecap="round"/>
+                <path class="steam s3" d="M60 30 C 58 24, 62 20, 60 14" stroke="#c9a24b" stroke-width="1.6" stroke-linecap="round"/>
+                <ellipse cx="50" cy="42" rx="34" ry="7" stroke="#c9a24b" stroke-width="1.8"/>
+                <path d="M16 42 C 16 60, 84 60, 84 42" stroke="#c9a24b" stroke-width="1.8"/>
+                <ellipse cx="50" cy="68" rx="38" ry="6" stroke="#8a6f37" stroke-width="1.4"/>
+                <line x1="26" y1="76" x2="26" y2="90" stroke="#c9a24b" stroke-width="1.6" stroke-linecap="round"/>
+                <path d="M23 76 L23 82 M29 76 L29 82 M26 76 L26 82" stroke="#c9a24b" stroke-width="1.2" stroke-linecap="round"/>
+                <path d="M74 76 C 70 78, 70 84, 74 86 L74 90" stroke="#c9a24b" stroke-width="1.6" stroke-linecap="round" fill="none"/>
+            </svg>
+        </div>
 
         <span class="eyebrow">Cuisine béninoise raffinée</span>
         <h2>L'art de la table, livré chez vous</h2>
@@ -888,22 +1129,46 @@
         </p>
 
         <div class="feature-row">
-            <span class="feature-chip">🚚 Livraison rapide</span>
-            <span class="feature-chip">🔒 Paiement sécurisé</span>
-            <span class="feature-chip">📍 Cotonou &amp; Calavi</span>
+            <span class="feature-chip"><svg class="icon" width="15" height="15"><use href="#icon-clock"></use></svg> Livraison rapide</span>
+            <span class="feature-chip"><svg class="icon" width="15" height="15"><use href="#icon-shield"></use></svg> Paiement sécurisé</span>
+            <span class="feature-chip"><svg class="icon" width="15" height="15"><use href="#icon-pin"></use></svg> Cotonou &amp; Calavi</span>
         </div>
 
         <button class="btn-contact" onclick="window.location.href='/contact'">
-            📩 Contactez-nous
+            <svg class="icon" width="15" height="15"><use href="#icon-mail"></use></svg> Contactez-nous
         </button>
     </section>
 
-    {% macro afficher_plats(liste) %}
+    <section class="pillars">
+        <div class="pillar">
+            <div class="icon-ring"><svg class="icon" width="20" height="20"><use href="#icon-plate"></use></svg></div>
+            <h4>Cuisine maison</h4>
+            <p>Des recettes béninoises préparées chaque jour avec des produits frais et de saison.</p>
+        </div>
+        <div class="pillar">
+            <div class="icon-ring"><svg class="icon" width="20" height="20"><use href="#icon-truck"></use></svg></div>
+            <h4>Livraison précise</h4>
+            <p>Un créneau annoncé, un plat qui arrive chaud, dans le respect de l'heure indiquée.</p>
+        </div>
+        <div class="pillar">
+            <div class="icon-ring"><svg class="icon" width="20" height="20"><use href="#icon-shield"></use></svg></div>
+            <h4>Service attentionné</h4>
+            <p>Un suivi de commande clair et une équipe disponible du premier au dernier plat.</p>
+        </div>
+    </section>
+
+    {% macro afficher_plats(liste, signature=False) %}
     <section class="menu">
         {% for met in liste %}
         {% set prix_final = (met.prix - (met.prix * met.promo / 100))|round|int if met.promo > 0 else met.prix %}
         {% set dispo_now = met.badge == "now" %}
-        <div class="plat">
+        <div class="plat{{ ' signature' if signature and loop.first else '' }}">
+            {% if signature and loop.first %}
+            <div class="ribbon-signature">
+                <svg class="icon" width="11" height="11"><use href="#icon-star"></use></svg> Coup de cœur
+            </div>
+            {% endif %}
+
             {% if met.badge == "now" %}
             <div class="badge now"><span class="dot"></span> Maintenant</div>
             {% elif met.badge == "today" %}
@@ -924,12 +1189,19 @@
                 <p class="prix-barre">{{ met.prix }} F</p>
                 {% endif %}
                 <p class="prix-final">{{ prix_final }} FCFA</p>
-                <p class="horaire">⏰ {{ met.heure_debut }} - {{ met.heure_fin }}</p>
+                <p class="horaire">
+                    <svg class="icon" width="12" height="12"><use href="#icon-clock"></use></svg>
+                    {{ met.heure_debut }} - {{ met.heure_fin }}
+                </p>
 
                 <div class="quantite">
-                    <button onclick="moins('{{ met.id }}')" aria-label="Diminuer la quantité">-</button>
+                    <button onclick="moins('{{ met.id }}')" aria-label="Diminuer la quantité">
+                        <svg class="icon" width="13" height="13"><use href="#icon-minus"></use></svg>
+                    </button>
                     <input id="q{{ met.id }}" value="1" readonly>
-                    <button onclick="plus('{{ met.id }}')" aria-label="Augmenter la quantité">+</button>
+                    <button onclick="plus('{{ met.id }}')" aria-label="Augmenter la quantité">
+                        <svg class="icon" width="13" height="13"><use href="#icon-plus"></use></svg>
+                    </button>
                 </div>
 
                 <button class="btn-add"
@@ -946,19 +1218,27 @@
     </section>
     {% endmacro %}
 
-    <div id="repas" class="section-title">🍽️ Repas</div>
+    <div id="repas" class="section-title">
+        <svg class="icon" width="22" height="22"><use href="#icon-plate"></use></svg> Repas
+    </div>
     <div class="section-bar"></div>
-    {{ afficher_plats(repas) }}
+    {{ afficher_plats(repas, true) }}
 
-    <div id="desserts" class="section-title">🍰 Desserts</div>
+    <div id="desserts" class="section-title">
+        <svg class="icon" width="22" height="22"><use href="#icon-cake"></use></svg> Desserts
+    </div>
     <div class="section-bar"></div>
     {{ afficher_plats(desserts) }}
 
-    <div id="boissons" class="section-title">🥤 Boissons</div>
+    <div id="boissons" class="section-title">
+        <svg class="icon" width="22" height="22"><use href="#icon-cup"></use></svg> Boissons
+    </div>
     <div class="section-bar"></div>
     {{ afficher_plats(jus) }}
 
-    <div id="livraison" class="section-title">🚚 Tarifs de livraison</div>
+    <div id="livraison" class="section-title">
+        <svg class="icon" width="22" height="22"><use href="#icon-truck"></use></svg> Tarifs de livraison
+    </div>
     <div class="section-bar"></div>
 
     <section class="delivery-section">
@@ -966,7 +1246,7 @@
 
             <div class="zone-card">
                 <div class="zone-card-head">
-                    <span class="zone-tag">ZONE A</span>
+                    <span class="zone-tag"><svg class="icon" width="12" height="12"><use href="#icon-pin"></use></svg> ZONE A</span>
                 </div>
                 <div class="quartiers">
                     <span class="quartier-chip">Sainte Cécile</span>
@@ -1002,7 +1282,7 @@
 
             <div class="zone-card">
                 <div class="zone-card-head">
-                    <span class="zone-tag">ZONE B</span>
+                    <span class="zone-tag"><svg class="icon" width="12" height="12"><use href="#icon-pin"></use></svg> ZONE B</span>
                 </div>
                 <div class="quartiers">
                     <span class="quartier-chip">Adogleta</span>
@@ -1036,7 +1316,7 @@
 
             <div class="zone-card">
                 <div class="zone-card-head">
-                    <span class="zone-tag">ZONE C</span>
+                    <span class="zone-tag"><svg class="icon" width="12" height="12"><use href="#icon-pin"></use></svg> ZONE C</span>
                 </div>
                 <div class="quartiers">
                     <span class="quartier-chip">Godomey</span>
@@ -1069,7 +1349,7 @@
 
             <div class="zone-card">
                 <div class="zone-card-head">
-                    <span class="zone-tag">ZONE D</span>
+                    <span class="zone-tag"><svg class="icon" width="12" height="12"><use href="#icon-pin"></use></svg> ZONE D</span>
                 </div>
                 <div class="quartiers">
                     <span class="quartier-chip">Université (UAC)</span>
@@ -1099,7 +1379,7 @@
 
             <div class="zone-card">
                 <div class="zone-card-head">
-                    <span class="zone-tag">ZONE E</span>
+                    <span class="zone-tag"><svg class="icon" width="12" height="12"><use href="#icon-pin"></use></svg> ZONE E</span>
                 </div>
                 <div class="quartiers">
                     <span class="quartier-chip">Abomey-Calavi Marché</span>
@@ -1129,11 +1409,17 @@
         </div>
     </section>
 
-    <div id="notif">✅ Ajouté au panier !</div>
+    <div id="notif"><svg class="icon" width="16" height="16"><use href="#icon-check"></use></svg> Ajouté au panier !</div>
 
     <footer>
         <div class="foot-brand">Whéké Food</div>
-        <p>© Whéké Food — Cotonou</p>
+        <div class="foot-links">
+            <button onclick="scrollToTop()">Accueil</button>
+            <button onclick="scrollToSection('repas')">Menu</button>
+            <button onclick="scrollToSection('livraison')">Livraison</button>
+            <button onclick="window.location.href='/contact'">Contact</button>
+        </div>
+        <p class="copyright">© Whéké Food — Cotonou</p>
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/dist/confetti.browser.min.js"></script>
