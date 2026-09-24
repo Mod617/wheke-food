@@ -1230,6 +1230,34 @@ def update_position():
         "temps_restant": livraison.temps_restant if livraison else None
     })
 
+
+@app.route("/facture/<tracking_id>")
+def voir_facture(tracking_id):
+    commande = models.Commande.query.filter_by(tracking_id=tracking_id).first()
+    if not commande:
+        return "Commande introuvable ❌"
+
+    facture = models.Facture.query.filter_by(
+        commande_id=commande.id, type_facture="FV"
+    ).order_by(models.Facture.id.desc()).first()
+
+    if not facture:
+        return render_template("facture.html", commande=commande, facture=None, statut="absente")
+
+    if facture.statut != "confirmee":
+        return render_template("facture.html", commande=commande, facture=facture, statut="en_cours")
+
+    lignes = json.loads(facture.lignes_json) if facture.lignes_json else []
+
+    return render_template(
+        "facture.html",
+        commande=commande,
+        facture=facture,
+        lignes=lignes,
+        statut="confirmee"
+    )
+
+
 @app.route("/api/livreur/prendre", methods=["POST"])
 @login_required
 def prendre_commande():
