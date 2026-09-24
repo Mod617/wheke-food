@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block content %}
+<div style="max-width:500px; margin:30px auto; padding:20px; font-family:sans-serif;">
+
+  <h2>🧾 Facture normalisée</h2>
+  <p>Commande <strong>{{ commande.tracking_id }}</strong></p>
+
+  {% if statut == "absente" %}
+    <p>⏳ La facture n'a pas encore été générée pour cette commande.</p>
+
+  {% elif statut == "en_cours" %}
+    <p>⏳ Facture en cours de traitement auprès de la DGI...</p>
+    {% if facture.derniere_erreur %}
+      <p style="color:#b00;">⚠️ Un souci est survenu, notre équipe va réessayer. Contactez-nous si ça persiste après quelques minutes.</p>
+    {% endif %}
+    <script>
+      // rafraîchit la page automatiquement en attendant la confirmation
+      setTimeout(() => location.reload(), 5000);
+    </script>
+
+  {% else %}
+    <div style="border:1px solid #ddd; border-radius:10px; padding:15px;">
+      <p><strong>IFU vendeur :</strong> {{ commande.client_ifu or "—" }}</p>
+      <p><strong>NIM :</strong> {{ facture.nim }}</p>
+      <p><strong>Code MECeF/DGI :</strong> {{ facture.code_mecef }}</p>
+      <p><strong>Date :</strong> {{ facture.date_mecef }}</p>
+
+      <hr>
+      <table style="width:100%; font-size:14px;">
+        {% for ligne in lignes %}
+        <tr>
+          <td>{{ ligne.name }} x{{ ligne.quantity }}</td>
+          <td style="text-align:right;">{{ ligne.price * ligne.quantity }} FCFA</td>
+        </tr>
+        {% endfor %}
+      </table>
+      <hr>
+      <p style="text-align:right;"><strong>Total : {{ facture.total }} FCFA</strong></p>
+
+      {% if facture.qr_code %}
+      <div style="text-align:center; margin-top:15px;">
+        <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data={{ facture.qr_code | urlencode }}" alt="QR Code facture">
+      </div>
+      {% endif %}
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}
