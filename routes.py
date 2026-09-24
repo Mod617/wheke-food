@@ -7,6 +7,7 @@ from app import csrf
 from extensions import db, login_manager, socketio
 
 import models
+from emcf import emettre_facture_pour_commande
 
 import json
 from pywebpush import webpush, WebPushException
@@ -14,6 +15,7 @@ from pywebpush import webpush, WebPushException
 from security import hash_password, verify_password, check_password
 from flask_login import login_user, login_required, logout_user, current_user
 import os
+import requests
 from sqlalchemy import func
 import uuid
 import math
@@ -464,9 +466,6 @@ def relancer_paiement():
 
 @app.route("/valider-paiement-final")
 def valider_paiement_final():
-    import requests
-    import os
-    
     id_transaction = request.args.get('id') or request.args.get('transaction_id')
     tracking_id = request.args.get('tracking_id')
 
@@ -477,7 +476,7 @@ def valider_paiement_final():
     if not commande:
         return redirect("/")
 
-    # ⬅️ NOUVEAU : vérification CRITIQUE — la transaction doit appartenir à CETTE commande.
+    # ⬅️ vérification CRITIQUE — la transaction doit appartenir à CETTE commande.
     # Tolérance : si fedapay_transaction_id est encore vide (commande créée avant ce déploiement),
     # on laisse passer une fois pour ne pas bloquer les paiements en cours. À retirer après quelques jours.
     if commande.fedapay_transaction_id and commande.fedapay_transaction_id != str(id_transaction):
@@ -494,23 +493,29 @@ def valider_paiement_final():
     try:
         req = requests.get(f"{base_url}/transactions/{id_transaction}", headers=headers)
         res = req.json()
-        
+
         transaction_data = res.get('v1/transaction') or res
         status = transaction_data.get('status')
         montant_paye = transaction_data.get('amount')
 
-        # ⬅️ NOUVEAU : double vérification du montant
+        # ⬅️ double vérification du montant
         if status == 'approved' and montant_paye == commande.total:
             if commande.statut != "recu":
                 commande.statut = "recu"
+                commande.paye = True
+                commande.date_paiement = datetime.utcnow()
+                commande.mode_paiement = transaction_data.get('mode')  # ⚠️ à vérifier : nom exact du champ renvoyé par FedaPay
                 if not commande.fedapay_transaction_id:
                     commande.fedapay_transaction_id = str(id_transaction)
                 db.session.commit()
-            
+
+                # 🧾 Émission de la facture normalisée (non bloquant : ne casse jamais le paiement)
+                emettre_facture_pour_commande(commande.id)
+
             return redirect(f"/suivi/{tracking_id}?status=success")
-        
+
         return redirect(f"/suivi/{tracking_id}?status=failed")
-        
+
     except Exception as e:
         print(f"Erreur validation : {e}")
         return redirect("/")
