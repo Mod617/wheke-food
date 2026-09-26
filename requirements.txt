@@ -12,6 +12,7 @@ gevent
 eventlet
 gunicorn
 psycopg2-binary
+psycopg[binary]
 requests
 python-dotenv
 pillow
