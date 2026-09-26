@@ -1,8 +1,6 @@
 # emcf.py
 """
-Client pour l'API e-MCF (SYGMEF) de la DGI Bénin.
-⚠️ Endpoints et enums basés sur des SDK tiers non-officiels — à confirmer
-avec la documentation reçue de la DGI avant mise en production.
+Client pour l'API e-MCF (SYGMEF) de la DGI Bénin — v1.0, doc officielle DGI (15/01/2021).
 """
 
 import json
@@ -15,24 +13,30 @@ import models
 
 
 # =========================
-# BAS NIVEAU : APPELS API
+# BAS NIVEAU : APPELS API — FACTURATION
 # =========================
 
 def _headers():
     return {
         "Authorization": f"Bearer {app.config['EMCF_TOKEN']}",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "Accept": "application/json"
     }
 
 def _invoice_url(path=""):
     return f"{app.config['EMCF_BASE_URL']}/invoice{path}"
 
+def _info_url(path=""):
+    return f"{app.config['EMCF_BASE_URL']}/info{path}"
+
 def emcf_status():
+    """GET /invoice/ — statut de l'API, validité du jeton, factures en attente."""
     r = requests.get(_invoice_url("/"), headers=_headers(), timeout=15)
     r.raise_for_status()
     return r.json()
 
 def emcf_creer_facture(payload):
+    """POST /invoice/ — soumet la facture, renvoie uid + totaux calculés par l'e-MCF."""
     r = requests.post(_invoice_url("/"), json=payload, headers=_headers(), timeout=15)
     data = r.json()
     if r.status_code >= 400 or data.get("errorCode"):
@@ -40,11 +44,45 @@ def emcf_creer_facture(payload):
     return data
 
 def emcf_finaliser_facture(uid, action="confirm"):
+    """
+    PUT /invoice/{uid}/{action} — action = 'confirm' ou 'annuler'.
+    ⚠️ La doc officielle indique "Method: POST" dans le texte, mais l'exemple concret
+    montre bien "PUT /api/invoice/{uid}/confirm". On suit l'exemple (PUT) ; si l'API
+    répond 405, tenter POST comme repli.
+    """
     r = requests.put(_invoice_url(f"/{uid}/{action}"), headers=_headers(), timeout=15)
     data = r.json()
     if r.status_code >= 400 or data.get("errorCode"):
         raise RuntimeError(data.get("errorDesc") or f"Erreur e-MCF (HTTP {r.status_code})")
     return data
+
+def emcf_details_facture(uid):
+    """GET /invoice/{uid} — relit une facture en attente (avant finalisation)."""
+    r = requests.get(_invoice_url(f"/{uid}"), headers=_headers(), timeout=15)
+    r.raise_for_status()
+    return r.json()
+
+
+# =========================
+# BAS NIVEAU : APPELS API — INFORMATION (diagnostic)
+# =========================
+
+def emcf_info_status():
+    """GET /info/status — état de tous les e-MCF du compte."""
+    r = requests.get(_info_url("/status"), headers=_headers(), timeout=15)
+    r.raise_for_status()
+    return r.json()
+
+def emcf_tax_groups():
+    """GET /info/taxGroups — valeurs réelles des groupes A à F (en %). À vérifier avant de choisir EMCF_TAX_GROUP."""
+    r = requests.get(_info_url("/taxGroups"), headers=_headers(), timeout=15)
+    r.raise_for_status()
+    return r.json()
+
+def emcf_payment_types():
+    r = requests.get(_info_url("/paymentTypes"), headers=_headers(), timeout=15)
+    r.raise_for_status()
+    return r.json()
 
 
 # =========================
@@ -63,23 +101,23 @@ def _mode_paiement_emcf(mode_paiement):
 
 
 def construire_payload_facture(commande, items):
-    # ⚠️ TaxGroup unique pour tout (A à F) — confirme la bonne lettre pour la
-    # restauration/régime TPS auprès de la DGI. Valeur lue depuis EMCF_TAX_GROUP.
+    # ⚠️ Groupe de taxation : à confirmer avec emcf_tax_groups() et ton comptable —
+    # probablement un groupe à 0% (A/C/E/F) si tu es en régime TPS (forfait, hors TVA).
     tax_group = app.config["EMCF_TAX_GROUP"]
 
     lignes = []
     for item in items:
         lignes.append({
             "name": (item.met_nom or "Article")[:200],
-            "price": float(item.prix),
-            "quantity": int(item.quantite),
+            "price": int(round(item.prix)),      # ⬅️ integer, pas float
+            "quantity": item.quantite,
             "taxGroup": tax_group
         })
 
     if commande.prix_livraison:
         lignes.append({
             "name": "Frais de livraison",
-            "price": float(commande.prix_livraison),
+            "price": int(round(commande.prix_livraison)),
             "quantity": 1,
             "taxGroup": tax_group
         })
@@ -91,7 +129,7 @@ def construire_payload_facture(commande, items):
         "operator": {"name": "Whèkè Food"},
         "payment": [{
             "name": _mode_paiement_emcf(commande.mode_paiement),
-            "amount": int(commande.total)
+            "amount": int(round(commande.total))
         }],
         "reference": commande.tracking_id
     }
