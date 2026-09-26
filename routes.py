@@ -1959,6 +1959,25 @@ def save_subscription():
 
     return jsonify({"status": "subscribed"}), 201
 
+
+@app.route("/admin/emcf/diagnostic")
+@login_required
+def emcf_diagnostic():
+    if not isinstance(current_user, models.Admin):
+        abort(403)
+
+    from emcf import emcf_status, emcf_tax_groups, emcf_payment_types
+
+    resultat = {}
+    for nom, fonction in [("status", emcf_status), ("tax_groups", emcf_tax_groups), ("payment_types", emcf_payment_types)]:
+        try:
+            resultat[nom] = fonction()
+        except Exception as e:
+            resultat[nom] = f"Erreur : {e}"
+
+    return jsonify(resultat)
+
+
 @app.route("/api/vapid-public-key")
 def vapid_public_key():
     return jsonify({"publicKey": os.environ.get("VAPID_PUBLIC_KEY", "")})        
