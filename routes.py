@@ -1978,47 +1978,7 @@ def emcf_diagnostic():
     return jsonify(resultat)
 
 
-@app.route("/admin/emcf/test-brut")
-@login_required
-def emcf_test_brut():
-    if not isinstance(current_user, models.Admin):
-        abort(403)
 
-    from emcf import emcf_creer_facture, emcf_finaliser_facture
-
-    payload = {
-        "ifu": app.config["EMCF_IFU"],
-        "type": "FV",
-        "items": [
-            {
-                "name": "Test article",
-                "price": 1000,
-                "quantity": 1,
-                "taxGroup": app.config["EMCF_TAX_GROUP"]
-            }
-        ],
-        "operator": {"name": "Test Whèkè Food"},
-        "payment": [{"name": "ESPECES", "amount": 1000}],
-        "reference": "TEST-DIAGNOSTIC-001"
-    }
-
-    try:
-        creation = emcf_creer_facture(payload)
-        uid = creation.get("uid")
-
-        if not uid:
-            return jsonify({"etape": "creation", "reponse": creation})
-
-        confirmation = emcf_finaliser_facture(uid, "confirm")
-
-        return jsonify({
-            "success": True,
-            "creation": creation,
-            "confirmation": confirmation
-        })
-
-    except Exception as e:
-        return jsonify({"success": False, "erreur": str(e)})
 
 
 
